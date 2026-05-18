@@ -1,6 +1,6 @@
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Gamepad2, Menu, X, Wallet, LogOut, User as UserIcon, ShieldCheck } from "lucide-react";
+import { Gamepad2, Menu, X, Wallet, LogOut, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,13 +8,13 @@ import { toast } from "sonner";
 
 export function SiteHeader() {
   const { user } = useAuth();
-  const router = useRouter();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Signed out");
-    router.navigate({ to: "/" });
+    navigate("/");
   };
 
   const nav = [
@@ -22,6 +22,11 @@ export function SiteHeader() {
     { to: "/games", label: "Games" },
     { to: "/dashboard", label: "Dashboard" },
   ] as const;
+
+  const navClass = ({ isActive }: { isActive: boolean }) =>
+    isActive
+      ? "px-3 py-2 text-sm text-foreground font-medium"
+      : "px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors";
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/50 glass-strong">
@@ -37,14 +42,9 @@ export function SiteHeader() {
 
         <nav className="hidden md:flex items-center gap-1">
           {nav.map((n) => (
-            <Link
-              key={n.to}
-              to={n.to}
-              className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              activeProps={{ className: "px-3 py-2 text-sm text-foreground font-medium" }}
-            >
+            <NavLink key={n.to} to={n.to} end={n.to === "/"} className={navClass}>
               {n.label}
-            </Link>
+            </NavLink>
           ))}
         </nav>
 
@@ -84,10 +84,10 @@ export function SiteHeader() {
       {open && (
         <div className="md:hidden border-t border-border/50 glass-strong px-4 py-4 space-y-2">
           {nav.map((n) => (
-            <Link key={n.to} to={n.to} onClick={() => setOpen(false)}
+            <NavLink key={n.to} to={n.to} end={n.to === "/"} onClick={() => setOpen(false)}
               className="block px-3 py-2 rounded-md hover:bg-secondary/60">
               {n.label}
-            </Link>
+            </NavLink>
           ))}
           <div className="pt-2 border-t border-border/50 grid grid-cols-2 gap-2">
             {user ? (
