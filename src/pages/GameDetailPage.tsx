@@ -4,19 +4,13 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, AlertTriangle, QrCode, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createTransaction, getGameWithProducts } from "@/lib/topup.functions";
 import { gameImage, formatIDR } from "@/lib/games";
 import { useAuth } from "@/hooks/use-auth";
 
-const PAYMENT_METHODS = [
-  { id: "wallet", label: "Wallet Balance" },
-  { id: "qris", label: "QRIS" },
-  { id: "gopay", label: "GoPay" },
-  { id: "ovo", label: "OVO" },
-  { id: "bank_transfer", label: "Bank Transfer" },
-] as const;
+const WA_CONFIRM_NUMBER = "62895392230445";
 
 export default function GameDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -32,9 +26,9 @@ export default function GameDetailPage() {
   const [userGameId, setUserGameId] = useState("");
   const [serverId, setServerId] = useState("");
   const [productId, setProductId] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] =
-    useState<(typeof PAYMENT_METHODS)[number]["id"]>("qris");
   const [submitting, setSubmitting] = useState(false);
+  const [orderCreated, setOrderCreated] = useState(false);
+  const [orderId, setOrderId] = useState("");
 
   if (isLoading)
     return (
@@ -48,7 +42,7 @@ export default function GameDetailPage() {
       <div className="container mx-auto px-4 py-20 text-center">
         <h1 className="text-2xl font-bold">Game not found</h1>
         <Link to="/games" className="mt-4 inline-block text-sm text-muted-foreground underline">
-          ← Back to all games
+          Back to all games
         </Link>
       </div>
     );
@@ -56,7 +50,7 @@ export default function GameDetailPage() {
   const { game, products } = data;
   const selected = products.find((p) => p.id === productId);
 
-  const handleSubmit = async () => {
+  const handleBuy = async () => {
     if (!user) {
       toast.error("Please sign in to continue");
       navigate(`/login?redirect=/games/${slug}`);
@@ -72,10 +66,11 @@ export default function GameDetailPage() {
         productId,
         userGameId: userGameId.trim(),
         serverId: serverId.trim() || null,
-        paymentMethod,
+        paymentMethod: "qris",
       });
-      toast.success(`Order ${res.orderId} created — ${res.status}`);
-      navigate("/dashboard");
+      setOrderId(res.orderId);
+      setOrderCreated(true);
+      toast.success(`Order ${res.orderId} created`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to create order");
     } finally {
@@ -83,10 +78,48 @@ export default function GameDetailPage() {
     }
   };
 
+  const handleConfirmPayment = () => {
+    const msg = encodeURIComponent("Min gw mau confirm pembayaran dong");
+    window.open(`https://wa.me/${WA_CONFIRM_NUMBER}?text=${msg}`, "_blank");
+  };
+
+  if (orderCreated) {
+    return (
+      <div className="container mx-auto px-4 py-10 max-w-lg">
+        <div className="glass-strong rounded-3xl p-8 neon-ring text-center">
+          <div className="grid h-16 w-16 mx-auto place-items-center rounded-full bg-emerald-500/20">
+            <Check className="h-8 w-8 text-emerald-400" />
+          </div>
+          <h1 className="mt-4 text-2xl font-bold">Order Created</h1>
+          <p className="mt-2 text-muted-foreground">
+            Your order <span className="font-mono text-foreground">{orderId}</span> is waiting for payment.
+          </p>
+          <div className="mt-6 space-y-3">
+            <Button
+              className="w-full h-12 gap-2 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring"
+              onClick={handleConfirmPayment}
+            >
+              <MessageCircle className="h-5 w-5" /> Confirm Payment via WhatsApp
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Click the button above to send payment confirmation to our admin via WhatsApp.
+              Please include your order ID and payment proof.
+            </p>
+            <Link to="/dashboard">
+              <Button variant="outline" className="w-full mt-2">
+                View My Orders
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-10">
       <Link to="/games" className="text-sm text-muted-foreground hover:text-foreground">
-        ← All games
+        All games
       </Link>
 
       <div className="mt-4 glass-strong rounded-3xl p-6 md:p-8 grid md:grid-cols-[260px_1fr] gap-6 items-center neon-ring">
@@ -131,6 +164,10 @@ export default function GameDetailPage() {
                 </div>
               )}
             </div>
+            <div className="mt-3 flex items-start gap-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 p-3 text-sm text-yellow-300">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>Pastikan User ID yang dimasukkan benar. Kesalahan ID bukan tanggung jawab admin.</span>
+            </div>
           </Step>
 
           <Step n={2} title="Select Package">
@@ -157,28 +194,17 @@ export default function GameDetailPage() {
             </div>
           </Step>
 
-          <Step n={3} title="Payment Method">
-            <div className="grid sm:grid-cols-2 gap-3">
-              {PAYMENT_METHODS.map((m) => {
-                const active = paymentMethod === m.id;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setPaymentMethod(m.id)}
-                    className={`text-left rounded-xl p-4 glass ${
-                      active ? "ring-2 ring-[var(--neon)] neon-ring" : "hover-glow"
-                    }`}
-                  >
-                    <p className="font-semibold">{m.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {m.id === "wallet"
-                        ? "Pay instantly from your wallet"
-                        : "Secure payment via Midtrans"}
-                    </p>
-                  </button>
-                );
-              })}
+          <Step n={3} title="Payment">
+            <div className="rounded-xl p-4 glass">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-lg bg-secondary">
+                  <QrCode className="h-5 w-5 text-[var(--neon)]" />
+                </div>
+                <div>
+                  <p className="font-semibold">QRIS Payment</p>
+                  <p className="text-xs text-muted-foreground">Pay via QRIS, then confirm payment through WhatsApp</p>
+                </div>
+              </div>
             </div>
           </Step>
         </div>
@@ -190,10 +216,7 @@ export default function GameDetailPage() {
             <Row label={game.user_id_label} value={userGameId || "—"} />
             {game.requires_server_id && <Row label="Server" value={serverId || "—"} />}
             <Row label="Package" value={selected?.name ?? "—"} />
-            <Row
-              label="Payment"
-              value={PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label ?? ""}
-            />
+            <Row label="Payment" value="QRIS" />
           </dl>
           <div className="my-5 h-px bg-border" />
           <div className="flex items-baseline justify-between">
@@ -203,14 +226,14 @@ export default function GameDetailPage() {
             </span>
           </div>
           <Button
-            onClick={handleSubmit}
-            disabled={submitting}
+            onClick={handleBuy}
+            disabled={submitting || !productId || !userGameId.trim()}
             className="mt-5 w-full h-11 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring"
           >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay now"}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy now"}
           </Button>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            By continuing you agree to our terms and order processing policy.
+            After purchase, confirm your payment via WhatsApp to process your order.
           </p>
         </aside>
       </div>

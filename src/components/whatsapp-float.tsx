@@ -12,7 +12,7 @@ export function WhatsAppFloat() {
       aria-label="Chat on WhatsApp"
     >
       <MessageCircle className="h-5 w-5" />
-      <span className="hidden sm:inline">WhatsApp Support</span>
+      <span className="hidden sm:inline">Customer Service</span>
     </a>
   );
 }

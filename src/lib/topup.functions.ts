@@ -37,7 +37,7 @@ export async function createTransaction(input: {
   productId: string;
   userGameId: string;
   serverId?: string | null;
-  paymentMethod: "wallet" | "qris" | "bank_transfer" | "gopay" | "ovo";
+  paymentMethod: "qris";
 }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
@@ -54,29 +54,6 @@ export async function createTransaction(input: {
 
   const orderId = `NT${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
-  if (input.paymentMethod === "wallet") {
-    const { data: wallet } = await supabase
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", userId)
-      .maybeSingle();
-    const bal = Number(wallet?.balance ?? 0);
-    if (bal < Number(product.price)) throw new Error("Insufficient wallet balance");
-    const newBal = bal - Number(product.price);
-    const { error: we } = await supabase
-      .from("wallets")
-      .update({ balance: newBal, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
-    if (we) throw new Error(we.message);
-    await supabase.from("wallet_history").insert({
-      user_id: userId,
-      amount: -Number(product.price),
-      type: "deduction",
-      description: `Order ${orderId}`,
-      balance_after: newBal,
-    });
-  }
-
   const { data: tx, error: te } = await supabase
     .from("transactions")
     .insert({
@@ -90,7 +67,7 @@ export async function createTransaction(input: {
       cost: product.cost,
       profit: Number(product.price) - Number(product.cost),
       payment_method: input.paymentMethod,
-      status: input.paymentMethod === "wallet" ? "processing" : "pending",
+      status: "waiting_payment",
     })
     .select("order_id, status")
     .single();
@@ -108,19 +85,71 @@ export async function listMyTransactions() {
   return data ?? [];
 }
 
-export async function getMyWallet() {
+export async function getMyProfile() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
   const userId = session.user.id;
-  const [{ data: wallet }, { data: history }, { data: profile }] = await Promise.all([
-    supabase.from("wallets").select("balance, updated_at").eq("user_id", userId).maybeSingle(),
-    supabase.from("wallet_history").select("id, amount, type, description, balance_after, created_at").order("created_at", { ascending: false }).limit(20),
-    supabase.from("profiles").select("display_name, referral_code").eq("id", userId).maybeSingle(),
-  ]);
-  return {
-    balance: Number(wallet?.balance ?? 0),
-    history: history ?? [],
-    displayName: profile?.display_name ?? null,
-    referralCode: profile?.referral_code ?? null,
-  };
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("display_name")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return { displayName: profile?.display_name ?? null };
+}
+
+export async function checkIsAdmin(): Promise<boolean> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return false;
+  const { data, error } = await supabase.rpc("has_role", {
+    _user_id: session.user.id,
+    _role: "admin",
+  });
+  if (error) return false;
+  return !!data;
+}
+
+// Admin functions
+export async function adminListTransactions() {
+  const { data, error } = await supabase
+    .from("transactions")
+    .select("id, order_id, user_id, amount, status, payment_method, created_at, updated_at, user_game_id, server_id, notes, games(name, slug), products(name), profiles!transactions_user_id_fkey(display_name)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function adminUpdateTransactionStatus(id: string, status: string) {
+  const { error } = await supabase
+    .from("transactions")
+    .update({ status: status as any, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function adminListGames() {
+  const { data, error } = await supabase
+    .from("games")
+    .select("*")
+    .order("name");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function adminListProducts() {
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, price, cost, is_active, sort_order, games(name)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function adminListUsers() {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, created_at, user_roles(role)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }

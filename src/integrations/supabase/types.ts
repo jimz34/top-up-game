@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -109,8 +107,6 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
-          referral_code: string | null
-          referred_by: string | null
           updated_at: string
         }
         Insert: {
@@ -118,8 +114,6 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
-          referral_code?: string | null
-          referred_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -127,16 +121,14 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
-          referral_code?: string | null
-          referred_by?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "profiles_referred_by_fkey"
-            columns: ["referred_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
+            foreignKeyName: "profiles_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "auth.users"
             referencedColumns: ["id"]
           },
         ]
@@ -231,54 +223,6 @@ export type Database = {
         }
         Relationships: []
       }
-      wallet_history: {
-        Row: {
-          amount: number
-          balance_after: number
-          created_at: string
-          description: string | null
-          id: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          balance_after: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          balance_after?: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      wallets: {
-        Row: {
-          balance: number
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          balance?: number
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          balance?: number
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -295,13 +239,11 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       tx_status:
-        | "pending"
-        | "paid"
+        | "waiting_payment"
+        | "waiting_confirmation"
         | "processing"
-        | "success"
+        | "completed"
         | "failed"
-        | "cancelled"
-        | "refunded"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -409,35 +351,16 @@ export type Enums<
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
 export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
       tx_status: [
-        "pending",
-        "paid",
+        "waiting_payment",
+        "waiting_confirmation",
         "processing",
-        "success",
+        "completed",
         "failed",
-        "cancelled",
-        "refunded",
       ],
     },
   },

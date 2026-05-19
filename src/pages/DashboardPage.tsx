@@ -1,21 +1,26 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Wallet, Receipt, Copy, Gift } from "lucide-react";
+import { Receipt, Gamepad2, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { getMyWallet, listMyTransactions } from "@/lib/topup.functions";
+import { getMyProfile, listMyTransactions } from "@/lib/topup.functions";
 import { formatIDR } from "@/lib/games";
 import { useAuth } from "@/hooks/use-auth";
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
-  paid: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  waiting_payment: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  waiting_confirmation: "bg-blue-500/15 text-blue-300 border-blue-500/30",
   processing: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  success: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  completed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   failed: "bg-red-500/15 text-red-300 border-red-500/30",
-  cancelled: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
-  refunded: "bg-purple-500/15 text-purple-300 border-purple-500/30",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  waiting_payment: "Waiting Payment",
+  waiting_confirmation: "Waiting Confirmation",
+  processing: "Processing",
+  completed: "Completed",
+  failed: "Failed",
 };
 
 export default function DashboardPage() {
@@ -26,9 +31,9 @@ export default function DashboardPage() {
     if (!loading && !user) navigate("/login?redirect=/dashboard");
   }, [loading, user, navigate]);
 
-  const { data: wallet } = useQuery({
-    queryKey: ["wallet"],
-    queryFn: () => getMyWallet(),
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => getMyProfile(),
     enabled: !!user,
   });
 
@@ -41,67 +46,46 @@ export default function DashboardPage() {
   if (loading || !user)
     return (
       <div className="container mx-auto px-4 py-20 text-center text-muted-foreground">
-        Loading…
+        Loading...
       </div>
     );
 
   return (
     <div className="container mx-auto px-4 py-10 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">
-          Hi, {wallet?.displayName ?? user.email?.split("@")[0]}
-        </h1>
-        <p className="text-muted-foreground">Manage your wallet, orders and referrals.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">
+            Hi, {profile?.displayName ?? user.email?.split("@")[0]}
+          </h1>
+          <p className="text-muted-foreground">Track your orders and top-up history.</p>
+        </div>
+        <div className="flex gap-2">
+          <Link to="/games">
+            <Button className="gap-2 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring">
+              <Gamepad2 className="h-4 w-4" /> Top up
+            </Button>
+          </Link>
+          <a
+            href="https://wa.me/62895392230443?text=Hi%20NeonTop%2C%20I%20need%20help"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="outline" className="gap-2">
+              <MessageCircle className="h-4 w-4" /> Support
+            </Button>
+          </a>
+        </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="glass-strong rounded-2xl p-6 neon-ring md:col-span-2">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--neon)]">
-            <Wallet className="h-4 w-4" /> Wallet balance
-          </div>
-          <p className="mt-2 text-4xl font-bold neon-text">
-            {formatIDR(wallet?.balance ?? 0)}
-          </p>
-          <div className="mt-4 flex gap-2">
-            <Button disabled className="bg-[var(--gradient-primary)] text-primary-foreground">
-              Deposit (coming soon)
-            </Button>
-            <Link to="/games">
-              <Button variant="outline">Top up a game</Button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="glass rounded-2xl p-6">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--neon)]">
-            <Gift className="h-4 w-4" /> Referral
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Share your code and earn cashback.
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <code className="flex-1 truncate rounded-md bg-secondary/60 px-3 py-2 font-mono">
-              {wallet?.referralCode ?? "—"}
-            </code>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => {
-                if (wallet?.referralCode) {
-                  navigator.clipboard.writeText(wallet.referralCode);
-                  toast.success("Referral code copied");
-                }
-              }}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      <div className="grid sm:grid-cols-3 gap-4">
+        <StatCard label="Total Orders" value={String(txs.length)} />
+        <StatCard label="Completed" value={String(txs.filter((t: any) => t.status === "completed").length)} />
+        <StatCard label="Active" value={String(txs.filter((t: any) => !["completed", "failed"].includes(t.status)).length)} />
       </div>
 
       <section className="glass-strong rounded-2xl p-6">
         <h2 className="font-bold flex items-center gap-2">
-          <Receipt className="h-4 w-4 text-[var(--neon)]" /> Transaction history
+          <Receipt className="h-4 w-4 text-[var(--neon)]" /> Transaction History
         </h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
@@ -110,6 +94,7 @@ export default function DashboardPage() {
                 <th className="py-2 pr-4">Order</th>
                 <th className="py-2 pr-4">Game</th>
                 <th className="py-2 pr-4">Package</th>
+                <th className="py-2 pr-4">User ID</th>
                 <th className="py-2 pr-4">Amount</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2 pr-4">Date</th>
@@ -121,6 +106,7 @@ export default function DashboardPage() {
                   <td className="py-3 pr-4 font-mono text-xs">{t.order_id}</td>
                   <td className="py-3 pr-4">{t.games?.name ?? "—"}</td>
                   <td className="py-3 pr-4">{t.products?.name ?? "—"}</td>
+                  <td className="py-3 pr-4 font-mono text-xs">{t.user_game_id}</td>
                   <td className="py-3 pr-4 font-medium">{formatIDR(Number(t.amount))}</td>
                   <td className="py-3 pr-4">
                     <span
@@ -128,7 +114,7 @@ export default function DashboardPage() {
                         STATUS_STYLES[t.status] ?? ""
                       }`}
                     >
-                      {t.status}
+                      {STATUS_LABELS[t.status] ?? t.status}
                     </span>
                   </td>
                   <td className="py-3 pr-4 text-muted-foreground">
@@ -138,10 +124,10 @@ export default function DashboardPage() {
               ))}
               {txs.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-10 text-center text-muted-foreground">
                     No orders yet.{" "}
                     <Link to="/games" className="underline">
-                      Start a top-up →
+                      Start a top-up
                     </Link>
                   </td>
                 </tr>
@@ -150,6 +136,15 @@ export default function DashboardPage() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="glass rounded-2xl p-5">
+      <p className="text-xs uppercase tracking-widest text-[var(--neon)]">{label}</p>
+      <p className="mt-1 text-2xl font-bold">{value}</p>
     </div>
   );
 }

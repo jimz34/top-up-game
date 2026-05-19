@@ -1,13 +1,13 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { Gamepad2, Menu, X, Wallet, LogOut, User as UserIcon } from "lucide-react";
+import { Gamepad2, Menu, X, LogOut, LayoutDashboard, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function SiteHeader() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -15,12 +15,13 @@ export function SiteHeader() {
     await supabase.auth.signOut();
     toast.success("Signed out");
     navigate("/");
+    setOpen(false);
   };
 
   const nav = [
     { to: "/", label: "Home" },
     { to: "/games", label: "Games" },
-    { to: "/dashboard", label: "Dashboard" },
+    ...(user ? [{ to: "/dashboard", label: "Dashboard" }] : []),
   ] as const;
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -53,9 +54,16 @@ export function SiteHeader() {
             <>
               <Link to="/dashboard">
                 <Button variant="ghost" size="sm" className="gap-2">
-                  <Wallet className="h-4 w-4" /> Wallet
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
                 </Button>
               </Link>
+              {isAdmin && (
+                <Link to="/admin">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <Shield className="h-4 w-4" /> Admin
+                  </Button>
+                </Link>
+              )}
               <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
                 <LogOut className="h-4 w-4" /> Sign out
               </Button>
@@ -93,11 +101,16 @@ export function SiteHeader() {
             {user ? (
               <>
                 <Link to="/dashboard" onClick={() => setOpen(false)}>
-                  <Button variant="secondary" className="w-full gap-2"><UserIcon className="h-4 w-4" />Account</Button>
+                  <Button variant="secondary" className="w-full gap-2"><LayoutDashboard className="h-4 w-4" />Dashboard</Button>
                 </Link>
                 <Button onClick={handleLogout} variant="outline" className="w-full gap-2">
                   <LogOut className="h-4 w-4" />Sign out
                 </Button>
+                {isAdmin && (
+                  <Link to="/admin" onClick={() => setOpen(false)} className="col-span-2">
+                    <Button variant="secondary" className="w-full gap-2"><Shield className="h-4 w-4" />Admin Panel</Button>
+                  </Link>
+                )}
               </>
             ) : (
               <>

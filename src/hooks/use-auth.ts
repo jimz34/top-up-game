@@ -6,18 +6,39 @@ export interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isAdmin: boolean;
 }
 
 export function useAuth(): AuthState {
-  const [state, setState] = useState<AuthState>({ user: null, session: null, loading: true });
+  const [state, setState] = useState<AuthState>({ user: null, session: null, loading: true, isAdmin: false });
 
   useEffect(() => {
+    const checkAdmin = async (userId: string) => {
+      const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+      return !!data;
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState({ user: session?.user ?? null, session, loading: false });
+      const user = session?.user ?? null;
+      if (user) {
+        (async () => {
+          const isAdmin = await checkAdmin(user.id);
+          setState({ user, session, loading: false, isAdmin });
+        })();
+      } else {
+        setState({ user: null, session: null, loading: false, isAdmin: false });
+      }
     });
 
     supabase.auth.getSession().then(({ data }) => {
-      setState({ user: data.session?.user ?? null, session: data.session, loading: false });
+      const user = data.session?.user ?? null;
+      if (user) {
+        checkAdmin(user.id).then((isAdmin) => {
+          setState({ user, session: data.session, loading: false, isAdmin });
+        });
+      } else {
+        setState({ user: null, session: null, loading: false, isAdmin: false });
+      }
     });
 
     return () => subscription.unsubscribe();
