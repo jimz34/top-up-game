@@ -4,11 +4,12 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Check, Loader2, AlertTriangle, QrCode, MessageCircle } from "lucide-react";
+import { Check, Loader as Loader2, TriangleAlert as AlertTriangle, QrCode, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { createTransaction, getGameWithProducts } from "@/lib/topup.functions";
 import { gameImage, formatIDR } from "@/lib/games";
 import { useAuth } from "@/hooks/use-auth";
+import { QrisModal } from "@/components/qris-modal";
 
 const WA_CONFIRM_NUMBER = "62895392230445";
 
@@ -29,6 +30,7 @@ export default function GameDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [orderCreated, setOrderCreated] = useState(false);
   const [orderId, setOrderId] = useState("");
+  const [qrisModalOpen, setQrisModalOpen] = useState(false);
 
   if (isLoading)
     return (
@@ -97,21 +99,32 @@ export default function GameDetailPage() {
           <div className="mt-6 space-y-3">
             <Button
               className="w-full h-12 gap-2 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring"
+              onClick={() => setQrisModalOpen(true)}
+            >
+              <QrCode className="h-5 w-5" /> QRIS
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full h-12 gap-2"
               onClick={handleConfirmPayment}
             >
-              <MessageCircle className="h-5 w-5" /> Confirm Payment via WhatsApp
+              <MessageCircle className="h-5 w-5" /> Confirm Payment
             </Button>
             <p className="text-xs text-muted-foreground">
-              Click the button above to send payment confirmation to our admin via WhatsApp.
-              Please include your order ID and payment proof.
+              Pay via QRIS, then click Confirm Payment to send proof via WhatsApp.
             </p>
             <Link to="/dashboard">
-              <Button variant="outline" className="w-full mt-2">
+              <Button variant="ghost" className="w-full mt-2">
                 View My Orders
               </Button>
             </Link>
           </div>
         </div>
+        <QrisModal
+          open={qrisModalOpen}
+          onClose={() => setQrisModalOpen(false)}
+          onConfirmPayment={handleConfirmPayment}
+        />
       </div>
     );
   }
@@ -233,10 +246,16 @@ export default function GameDetailPage() {
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy now"}
           </Button>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            After purchase, confirm your payment via WhatsApp to process your order.
+            After purchase, pay via QRIS and confirm payment through WhatsApp.
           </p>
         </aside>
       </div>
+
+      <QrisModal
+        open={qrisModalOpen}
+        onClose={() => setQrisModalOpen(false)}
+        onConfirmPayment={handleConfirmPayment}
+      />
     </div>
   );
 }

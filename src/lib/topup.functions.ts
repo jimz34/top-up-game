@@ -153,3 +153,51 @@ export async function adminListUsers() {
   if (error) throw new Error(error.message);
   return data ?? [];
 }
+
+// Admin product CRUD
+export async function adminCreateProduct(input: {
+  game_id: string;
+  name: string;
+  price: number;
+  cost: number;
+  sort_order?: number;
+  is_active?: boolean;
+}) {
+  const { data, error } = await supabase
+    .from("products")
+    .insert({
+      game_id: input.game_id,
+      name: input.name,
+      price: input.price,
+      cost: input.cost,
+      sort_order: input.sort_order ?? 0,
+      is_active: input.is_active ?? true,
+    })
+    .select("id, name")
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function adminUpdateProduct(id: string, input: {
+  name?: string;
+  price?: number;
+  cost?: number;
+  sort_order?: number;
+  is_active?: boolean;
+  game_id?: string;
+}) {
+  const { error } = await supabase
+    .from("products")
+    .update(input)
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function adminDeleteProduct(id: string) {
+  const { error } = await supabase
+    .from("products")
+    .delete()
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}

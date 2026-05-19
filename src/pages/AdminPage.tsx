@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, Receipt, Users, Gamepad2, Package, LogOut, Menu, X, Loader as Loader2, Check, Circle as XCircle, Clock, CreditCard } from "lucide-react";
+import { LayoutDashboard, Receipt, Users, Gamepad2, Package, LogOut, Menu, X, Loader as Loader2, Check, Circle as XCircle, Clock, CreditCard, Plus, Pencil, Trash2, Hop as Home, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,6 +22,9 @@ import {
   adminListGames,
   adminListProducts,
   adminListUsers,
+  adminCreateProduct,
+  adminUpdateProduct,
+  adminDeleteProduct,
   checkIsAdmin,
 } from "@/lib/topup.functions";
 import { formatIDR } from "@/lib/games";
@@ -43,6 +55,24 @@ const STATUS_ICONS: Record<string, any> = {
 
 type Tab = "orders" | "users" | "games" | "products";
 
+interface ProductForm {
+  game_id: string;
+  name: string;
+  price: string;
+  cost: string;
+  sort_order: string;
+  is_active: boolean;
+}
+
+const emptyProductForm: ProductForm = {
+  game_id: "",
+  name: "",
+  price: "",
+  cost: "0",
+  sort_order: "0",
+  is_active: true,
+};
+
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -51,6 +81,14 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("orders");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Product CRUD state
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -81,7 +119,7 @@ export default function AdminPage() {
   const { data: games = [], isLoading: gamesLoading } = useQuery({
     queryKey: ["admin-games"],
     queryFn: () => adminListGames(),
-    enabled: isAdmin && activeTab === "games",
+    enabled: isAdmin,
   });
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
@@ -97,6 +135,82 @@ export default function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-tx"] });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to update status");
+    }
+  };
+
+  // Product CRUD handlers
+  const openAddProduct = () => {
+    setEditingProductId(null);
+    setProductForm(emptyProductForm);
+    setProductDialogOpen(true);
+  };
+
+  const openEditProduct = (p: any) => {
+    setEditingProductId(p.id);
+    setProductForm({
+      game_id: p.game_id ?? (p.games as any)?.id ?? "",
+      name: p.name,
+      price: String(p.price),
+      cost: String(p.cost),
+      sort_order: String(p.sort_order),
+      is_active: p.is_active,
+    });
+    setProductDialogOpen(true);
+  };
+
+  const openDeleteProduct = (id: string) => {
+    setDeletingProductId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleSaveProduct = async () => {
+    if (!productForm.name.trim()) return toast.error("Product name is required");
+    if (!productForm.game_id) return toast.error("Select a game");
+    if (!productForm.price || Number(productForm.price) <= 0) return toast.error("Enter a valid price");
+    setSaving(true);
+    try {
+      if (editingProductId) {
+        await adminUpdateProduct(editingProductId, {
+          name: productForm.name,
+          price: Number(productForm.price),
+          cost: Number(productForm.cost),
+          sort_order: Number(productForm.sort_order),
+          is_active: productForm.is_active,
+          game_id: productForm.game_id,
+        });
+        toast.success("Product updated");
+      } else {
+        await adminCreateProduct({
+          game_id: productForm.game_id,
+          name: productForm.name,
+          price: Number(productForm.price),
+          cost: Number(productForm.cost),
+          sort_order: Number(productForm.sort_order),
+          is_active: productForm.is_active,
+        });
+        toast.success("Product created");
+      }
+      setProductDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to save product");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProduct = async () => {
+    if (!deletingProductId) return;
+    setSaving(true);
+    try {
+      await adminDeleteProduct(deletingProductId);
+      toast.success("Product deleted");
+      setDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete product");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -116,6 +230,66 @@ export default function AdminPage() {
     { id: "products", label: "Products", icon: Package },
   ];
 
+  const renderSidebarNav = (onNavClick?: () => void) => (
+    <nav className="flex-1 p-2 space-y-1">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => { setActiveTab(tab.id); onNavClick?.(); }}
+            className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+              activeTab === tab.id
+                ? "bg-secondary text-foreground font-medium"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+            }`}
+          >
+            <Icon className="h-4 w-4" /> {tab.label}
+          </button>
+        );
+      })}
+      <Link
+        to="/"
+        onClick={onNavClick}
+        className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+      >
+        <Home className="h-4 w-4" /> Home
+      </Link>
+    </nav>
+  );
+
+  const renderSidebarFooter = () => (
+    <div className="p-2 border-t border-border/50 space-y-1">
+      {user ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full gap-2 justify-start"
+          onClick={async () => {
+            await supabase.auth.signOut();
+            toast.success("Signed out");
+            navigate("/");
+          }}
+        >
+          <LogOut className="h-4 w-4" /> Sign out
+        </Button>
+      ) : (
+        <div className="space-y-1">
+          <Link to="/login">
+            <Button variant="ghost" size="sm" className="w-full gap-2 justify-start">
+              <LogIn className="h-4 w-4" /> Sign in
+            </Button>
+          </Link>
+          <Link to="/register">
+            <Button variant="ghost" size="sm" className="w-full gap-2 justify-start">
+              <UserPlus className="h-4 w-4" /> Register
+            </Button>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
       {/* Sidebar - Desktop */}
@@ -125,38 +299,8 @@ export default function AdminPage() {
             <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Admin Panel
           </h2>
         </div>
-        <nav className="flex-1 p-2 space-y-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? "bg-secondary text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                }`}
-              >
-                <Icon className="h-4 w-4" /> {tab.label}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="p-2 border-t border-border/50">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full gap-2 justify-start"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              toast.success("Signed out");
-              navigate("/");
-            }}
-          >
-            <LogOut className="h-4 w-4" /> Sign out
-          </Button>
-        </div>
+        {renderSidebarNav()}
+        {renderSidebarFooter()}
       </aside>
 
       {/* Mobile sidebar toggle */}
@@ -177,24 +321,8 @@ export default function AdminPage() {
                 <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Admin Panel
               </h2>
             </div>
-            <nav className="p-2 space-y-1">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }}
-                    className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                      activeTab === tab.id
-                        ? "bg-secondary text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" /> {tab.label}
-                  </button>
-                );
-              })}
-            </nav>
+            {renderSidebarNav(() => setSidebarOpen(false))}
+            {renderSidebarFooter()}
           </aside>
         </div>
       )}
@@ -357,12 +485,17 @@ export default function AdminPage() {
 
         {activeTab === "products" && (
           <div>
-            <h1 className="text-2xl font-bold mb-6">Product Management</h1>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold">Product Management</h1>
+              <Button onClick={openAddProduct} className="gap-2 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring">
+                <Plus className="h-4 w-4" /> Add Product
+              </Button>
+            </div>
             {productsLoading ? (
               <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[600px]">
+                <table className="w-full text-sm min-w-[700px]">
                   <thead className="text-muted-foreground text-left">
                     <tr className="border-b border-border/50">
                       <th className="py-2 pr-4">Name</th>
@@ -370,6 +503,7 @@ export default function AdminPage() {
                       <th className="py-2 pr-4">Price</th>
                       <th className="py-2 pr-4">Cost</th>
                       <th className="py-2 pr-4">Active</th>
+                      <th className="py-2 pr-4">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -380,8 +514,35 @@ export default function AdminPage() {
                         <td className="py-3 pr-4">{formatIDR(Number(p.price))}</td>
                         <td className="py-3 pr-4">{formatIDR(Number(p.cost))}</td>
                         <td className="py-3 pr-4">{p.is_active ? "Yes" : "No"}</td>
+                        <td className="py-3 pr-4">
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => openEditProduct(p)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-400 hover:text-red-300"
+                              onClick={() => openDeleteProduct(p.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
+                    {products.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                          No products yet. Click "Add Product" to create one.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -389,6 +550,108 @@ export default function AdminPage() {
           </div>
         )}
       </main>
+
+      {/* Product Add/Edit Dialog */}
+      <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
+        <DialogContent className="glass-strong border-border/50 max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingProductId ? "Edit Product" : "Add Product"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Game</Label>
+              <Select
+                value={productForm.game_id}
+                onValueChange={(val) => setProductForm((f) => ({ ...f, game_id: val }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a game" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(games as any[]).map((g: any) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Product Name</Label>
+              <Input
+                className="mt-1"
+                value={productForm.name}
+                onChange={(e) => setProductForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. 86 Diamonds"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Price (IDR)</Label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={productForm.price}
+                  onChange={(e) => setProductForm((f) => ({ ...f, price: e.target.value }))}
+                  placeholder="19000"
+                />
+              </div>
+              <div>
+                <Label>Cost (IDR)</Label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={productForm.cost}
+                  onChange={(e) => setProductForm((f) => ({ ...f, cost: e.target.value }))}
+                  placeholder="15000"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Sort Order</Label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  value={productForm.sort_order}
+                  onChange={(e) => setProductForm((f) => ({ ...f, sort_order: e.target.value }))}
+                />
+              </div>
+              <div className="flex items-end gap-2 pb-1">
+                <input
+                  type="checkbox"
+                  checked={productForm.is_active}
+                  onChange={(e) => setProductForm((f) => ({ ...f, is_active: e.target.checked }))}
+                  className="h-4 w-4"
+                />
+                <Label>Active</Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProductDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveProduct} disabled={saving} className="bg-[var(--gradient-primary)] text-primary-foreground">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingProductId ? "Save Changes" : "Create Product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="glass-strong border-border/50 max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete this product? This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteProduct} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
