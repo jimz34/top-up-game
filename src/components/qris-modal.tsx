@@ -106,6 +106,3 @@ export function QrisModal({ open, onClose, onConfirmPayment }: QrisModalProps) {
     </div>
   );
 }
-
-
-export { QrisModal }
