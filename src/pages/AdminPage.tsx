@@ -1,7 +1,28 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, Receipt, Users, Gamepad2, Package, LogOut, Menu, X, Loader as Loader2, Check, Circle as XCircle, Clock, CreditCard, Plus, Pencil, Trash2, Hop as Home, LogIn, UserPlus } from "lucide-react";
+import {
+  LayoutDashboard,
+  Receipt,
+  Users,
+  Package,
+  LogOut,
+  Menu,
+  X,
+  Settings,
+  Gamepad2,
+  Loader as Loader2,
+  Check,
+  Circle as XCircle,
+  Clock,
+  CreditCard,
+  Plus,
+  Pencil,
+  Trash2,
+  DollarSign,
+  TrendingUp,
+  ShoppingCart,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +50,8 @@ import {
 } from "@/lib/topup.functions";
 import { formatIDR } from "@/lib/games";
 
+/* ─── Status helpers ─── */
+
 const STATUS_OPTIONS = [
   { value: "waiting_payment", label: "Waiting Payment" },
   { value: "waiting_confirmation", label: "Waiting Confirmation" },
@@ -53,7 +76,9 @@ const STATUS_ICONS: Record<string, any> = {
   failed: XCircle,
 };
 
-type Tab = "orders" | "users" | "games" | "products";
+/* ─── Types ─── */
+
+type Section = "dashboard" | "products" | "transactions" | "settings";
 
 interface ProductForm {
   game_id: string;
@@ -73,13 +98,15 @@ const emptyProductForm: ProductForm = {
   is_active: true,
 };
 
+/* ─── Component ─── */
+
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [activeTab, setActiveTab] = useState<Tab>("orders");
+  const [section, setSection] = useState<Section>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Product CRUD state
@@ -104,16 +131,17 @@ export default function AdminPage() {
     }
   }, [loading, user, navigate]);
 
+  // Queries — always fetch so dashboard cards have data
   const { data: txs = [], isLoading: txLoading } = useQuery({
     queryKey: ["admin-tx"],
     queryFn: () => adminListTransactions(),
-    enabled: isAdmin && activeTab === "orders",
+    enabled: isAdmin,
   });
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () => adminListUsers(),
-    enabled: isAdmin && activeTab === "users",
+    enabled: isAdmin,
   });
 
   const { data: games = [], isLoading: gamesLoading } = useQuery({
@@ -125,7 +153,7 @@ export default function AdminPage() {
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: () => adminListProducts(),
-    enabled: isAdmin && activeTab === "products",
+    enabled: isAdmin,
   });
 
   const handleStatusChange = async (txId: string, newStatus: string) => {
@@ -214,6 +242,12 @@ export default function AdminPage() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Signed out");
+    navigate("/");
+  };
+
   if (loading || checking)
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -223,332 +257,320 @@ export default function AdminPage() {
 
   if (!isAdmin) return null;
 
-  const tabs: { id: Tab; label: string; icon: any }[] = [
-    { id: "orders", label: "Orders", icon: Receipt },
-    { id: "users", label: "Users", icon: Users },
-    { id: "games", label: "Games", icon: Gamepad2 },
+  /* ─── Sidebar nav items ─── */
+  const sidebarItems: { id: Section; label: string; icon: any }[] = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "products", label: "Products", icon: Package },
+    { id: "transactions", label: "Transactions", icon: Receipt },
+    { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const renderSidebarNav = (onNavClick?: () => void) => (
-    <nav className="flex-1 p-2 space-y-1">
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        return (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); onNavClick?.(); }}
-            className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-              activeTab === tab.id
-                ? "bg-secondary text-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
-          >
-            <Icon className="h-4 w-4" /> {tab.label}
-          </button>
-        );
-      })}
-      <Link
-        to="/"
-        onClick={onNavClick}
-        className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
-      >
-        <Home className="h-4 w-4" /> Home
-      </Link>
-    </nav>
+  const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => (
+    <div className="flex flex-col h-full">
+      <div className="p-4 border-b border-border/50">
+        <h2 className="font-bold flex items-center gap-2 text-sm">
+          <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Admin Panel
+        </h2>
+      </div>
+      <nav className="flex-1 p-2 space-y-0.5">
+        {sidebarItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => { setSection(item.id); onNavClick?.(); }}
+              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                section === item.id
+                  ? "bg-secondary text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" /> {item.label}
+            </button>
+          );
+        })}
+      </nav>
+      <div className="p-2 border-t border-border/50">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+        >
+          <LogOut className="h-4 w-4 shrink-0" /> Logout
+        </button>
+      </div>
+    </div>
   );
 
-  const renderSidebarFooter = () => (
-    <div className="p-2 border-t border-border/50 space-y-1">
-      {user ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full gap-2 justify-start"
-          onClick={async () => {
-            await supabase.auth.signOut();
-            toast.success("Signed out");
-            navigate("/");
-          }}
-        >
-          <LogOut className="h-4 w-4" /> Sign out
-        </Button>
+  /* ─── Dashboard stats ─── */
+  const totalRevenue = (txs as any[]).filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const totalProfit = (txs as any[]).filter((t) => t.status === "completed").reduce((s, t) => s + (Number(t.amount) - Number(t.cost ?? 0)), 0);
+  const pendingCount = (txs as any[]).filter((t) => t.status === "waiting_payment" || t.status === "waiting_confirmation").length;
+  const completedCount = (txs as any[]).filter((t) => t.status === "completed").length;
+
+  const StatCard = ({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string; sub?: string; color: string }) => (
+    <div className="glass-strong rounded-xl p-5 hover-glow">
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`grid h-10 w-10 place-items-center rounded-lg ${color}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <span className="text-sm text-muted-foreground">{label}</span>
+      </div>
+      <p className="text-2xl font-bold">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    </div>
+  );
+
+  /* ─── Render sections ─── */
+
+  const renderDashboard = () => (
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard icon={DollarSign} label="Revenue" value={formatIDR(totalRevenue)} sub={`${completedCount} completed orders`} color="bg-emerald-500/15 text-emerald-300" />
+        <StatCard icon={TrendingUp} label="Profit" value={formatIDR(totalProfit)} sub="From completed orders" color="bg-cyan-500/15 text-cyan-300" />
+        <StatCard icon={ShoppingCart} label="Pending" value={String(pendingCount)} sub="Awaiting payment/confirmation" color="bg-yellow-500/15 text-yellow-300" />
+        <StatCard icon={Package} label="Products" value={String(products.length)} sub={`${games.length} games`} color="bg-blue-500/15 text-blue-300" />
+      </div>
+
+      <h2 className="text-lg font-semibold mb-4">Recent Transactions</h2>
+      {(txs as any[]).length === 0 ? (
+        <p className="text-muted-foreground text-sm">No transactions yet.</p>
       ) : (
-        <div className="space-y-1">
-          <Link to="/login">
-            <Button variant="ghost" size="sm" className="w-full gap-2 justify-start">
-              <LogIn className="h-4 w-4" /> Sign in
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button variant="ghost" size="sm" className="w-full gap-2 justify-start">
-              <UserPlus className="h-4 w-4" /> Register
-            </Button>
-          </Link>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead className="text-muted-foreground text-left">
+              <tr className="border-b border-border/50">
+                <th className="py-2 pr-3">Order ID</th>
+                <th className="py-2 pr-3">Product</th>
+                <th className="py-2 pr-3">Amount</th>
+                <th className="py-2 pr-3">Status</th>
+                <th className="py-2 pr-3">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(txs as any[]).slice(0, 10).map((t) => {
+                const StatusIcon = STATUS_ICONS[t.status] ?? Clock;
+                return (
+                  <tr key={t.id} className="border-b border-border/30">
+                    <td className="py-3 pr-3 font-mono text-xs">{t.order_id}</td>
+                    <td className="py-3 pr-3">{t.products?.name ?? "—"}</td>
+                    <td className="py-3 pr-3 font-medium">{formatIDR(Number(t.amount))}</td>
+                    <td className="py-3 pr-3">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[t.status] ?? ""}`}>
+                        <StatusIcon className={`h-3 w-3 ${t.status === "processing" ? "animate-spin" : ""}`} />
+                        {t.status?.replace(/_/g, " ")}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-3 text-muted-foreground text-xs">
+                      {new Date(t.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 
+  const renderProducts = () => (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Products</h1>
+        <Button onClick={openAddProduct} className="gap-2 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring">
+          <Plus className="h-4 w-4" /> Add Product
+        </Button>
+      </div>
+      {productsLoading ? (
+        <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
+            <thead className="text-muted-foreground text-left">
+              <tr className="border-b border-border/50">
+                <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Game</th>
+                <th className="py-2 pr-4">Price</th>
+                <th className="py-2 pr-4">Cost</th>
+                <th className="py-2 pr-4">Active</th>
+                <th className="py-2 pr-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(products as any[]).map((p) => (
+                <tr key={p.id} className="border-b border-border/30">
+                  <td className="py-3 pr-4 font-medium">{p.name}</td>
+                  <td className="py-3 pr-4">{(p.games as any)?.name ?? "—"}</td>
+                  <td className="py-3 pr-4">{formatIDR(Number(p.price))}</td>
+                  <td className="py-3 pr-4">{formatIDR(Number(p.cost))}</td>
+                  <td className="py-3 pr-4">
+                    <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-red-500/15 text-red-300 border-red-500/30"}`}>
+                      {p.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="py-3 pr-4">
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProduct(p)}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => openDeleteProduct(p.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {products.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                    No products yet. Click "Add Product" to create one.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderTransactions = () => (
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Transactions</h1>
+      {txLoading ? (
+        <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[800px]">
+            <thead className="text-muted-foreground text-left">
+              <tr className="border-b border-border/50">
+                <th className="py-2 pr-3">Order ID</th>
+                <th className="py-2 pr-3">User</th>
+                <th className="py-2 pr-3">Game</th>
+                <th className="py-2 pr-3">Package</th>
+                <th className="py-2 pr-3">Game User ID</th>
+                <th className="py-2 pr-3">Amount</th>
+                <th className="py-2 pr-3">Status</th>
+                <th className="py-2 pr-3">Date</th>
+                <th className="py-2 pr-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(txs as any[]).map((t) => {
+                const StatusIcon = STATUS_ICONS[t.status] ?? Clock;
+                return (
+                  <tr key={t.id} className="border-b border-border/30">
+                    <td className="py-3 pr-3 font-mono text-xs">{t.order_id}</td>
+                    <td className="py-3 pr-3">
+                      <div className="text-sm">{(t.profiles as any)?.display_name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{t.user_id?.slice(0, 8)}...</div>
+                    </td>
+                    <td className="py-3 pr-3">{t.games?.name ?? "—"}</td>
+                    <td className="py-3 pr-3">{t.products?.name ?? "—"}</td>
+                    <td className="py-3 pr-3 font-mono text-xs">{t.user_game_id}</td>
+                    <td className="py-3 pr-3 font-medium">{formatIDR(Number(t.amount))}</td>
+                    <td className="py-3 pr-3">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[t.status] ?? ""}`}>
+                        <StatusIcon className={`h-3 w-3 ${t.status === "processing" ? "animate-spin" : ""}`} />
+                        {t.status?.replace(/_/g, " ")}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-3 text-muted-foreground text-xs">
+                      {new Date(t.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 pr-3">
+                      <Select
+                        value={t.status}
+                        onValueChange={(val) => handleStatusChange(t.id, val)}
+                      >
+                        <SelectTrigger className="h-8 w-[160px] text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                  </tr>
+                );
+              })}
+              {txs.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="py-10 text-center text-muted-foreground">
+                    No transactions yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div>
+      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <div className="glass-strong rounded-xl p-6 max-w-lg space-y-4">
+        <div>
+          <Label className="text-sm text-muted-foreground">Admin Email</Label>
+          <p className="text-sm font-medium mt-1">{user?.email}</p>
+        </div>
+        <div>
+          <Label className="text-sm text-muted-foreground">Total Users</Label>
+          <p className="text-sm font-medium mt-1">{users.length}</p>
+        </div>
+        <div>
+          <Label className="text-sm text-muted-foreground">Total Games</Label>
+          <p className="text-sm font-medium mt-1">{games.length}</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex w-56 flex-col border-r border-border/50 glass-strong">
-        <div className="p-4 border-b border-border/50">
-          <h2 className="font-bold flex items-center gap-2">
-            <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Admin Panel
-          </h2>
-        </div>
-        {renderSidebarNav()}
-        {renderSidebarFooter()}
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-56 flex-col border-r border-border/50 glass-strong shrink-0">
+        <SidebarContent />
       </aside>
 
       {/* Mobile sidebar toggle */}
       <button
-        className="md:hidden fixed top-20 left-4 z-50 grid h-10 w-10 place-items-center rounded-md glass"
+        className="md:hidden fixed bottom-6 left-4 z-50 grid h-12 w-12 place-items-center rounded-full glass-strong shadow-lg neon-ring"
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label="menu"
+        aria-label="Toggle sidebar"
       >
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setSidebarOpen(false)}>
-          <aside className="w-56 h-full glass-strong border-r border-border/50" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-border/50">
-              <h2 className="font-bold flex items-center gap-2">
-                <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Admin Panel
-              </h2>
-            </div>
-            {renderSidebarNav(() => setSidebarOpen(false))}
-            {renderSidebarFooter()}
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <aside
+            className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-56 glass-strong border-r border-border/50"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <SidebarContent onNavClick={() => setSidebarOpen(false)} />
           </aside>
-        </div>
+        </>
       )}
 
       {/* Main content */}
       <main className="flex-1 p-4 md:p-8 overflow-auto">
-        {activeTab === "orders" && (
-          <div>
-            <h1 className="text-2xl font-bold mb-6">Order Management</h1>
-            {txLoading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[800px]">
-                  <thead className="text-muted-foreground text-left">
-                    <tr className="border-b border-border/50">
-                      <th className="py-2 pr-3">Order ID</th>
-                      <th className="py-2 pr-3">User</th>
-                      <th className="py-2 pr-3">Game</th>
-                      <th className="py-2 pr-3">Package</th>
-                      <th className="py-2 pr-3">Game User ID</th>
-                      <th className="py-2 pr-3">Amount</th>
-                      <th className="py-2 pr-3">Status</th>
-                      <th className="py-2 pr-3">Date</th>
-                      <th className="py-2 pr-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(txs as any[]).map((t) => {
-                      const StatusIcon = STATUS_ICONS[t.status] ?? Clock;
-                      return (
-                        <tr key={t.id} className="border-b border-border/30">
-                          <td className="py-3 pr-3 font-mono text-xs">{t.order_id}</td>
-                          <td className="py-3 pr-3">
-                            <div className="text-sm">{(t.profiles as any)?.display_name ?? "—"}</div>
-                            <div className="text-xs text-muted-foreground font-mono">{t.user_id?.slice(0, 8)}...</div>
-                          </td>
-                          <td className="py-3 pr-3">{t.games?.name ?? "—"}</td>
-                          <td className="py-3 pr-3">{t.products?.name ?? "—"}</td>
-                          <td className="py-3 pr-3 font-mono text-xs">{t.user_game_id}</td>
-                          <td className="py-3 pr-3 font-medium">{formatIDR(Number(t.amount))}</td>
-                          <td className="py-3 pr-3">
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[t.status] ?? ""}`}>
-                              <StatusIcon className={`h-3 w-3 ${t.status === "processing" ? "animate-spin" : ""}`} />
-                              {t.status?.replace(/_/g, " ")}
-                            </span>
-                          </td>
-                          <td className="py-3 pr-3 text-muted-foreground text-xs">
-                            {new Date(t.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="py-3 pr-3">
-                            <Select
-                              value={t.status}
-                              onValueChange={(val) => handleStatusChange(t.id, val)}
-                            >
-                              <SelectTrigger className="h-8 w-[160px] text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {STATUS_OPTIONS.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {txs.length === 0 && (
-                      <tr>
-                        <td colSpan={9} className="py-10 text-center text-muted-foreground">
-                          No orders yet.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "users" && (
-          <div>
-            <h1 className="text-2xl font-bold mb-6">User Management</h1>
-            {usersLoading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[500px]">
-                  <thead className="text-muted-foreground text-left">
-                    <tr className="border-b border-border/50">
-                      <th className="py-2 pr-4">ID</th>
-                      <th className="py-2 pr-4">Display Name</th>
-                      <th className="py-2 pr-4">Role</th>
-                      <th className="py-2 pr-4">Joined</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(users as any[]).map((u) => (
-                      <tr key={u.id} className="border-b border-border/30">
-                        <td className="py-3 pr-4 font-mono text-xs">{u.id?.slice(0, 8)}...</td>
-                        <td className="py-3 pr-4">{u.display_name ?? "—"}</td>
-                        <td className="py-3 pr-4">
-                          <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${
-                            (u.user_roles as any)?.[0]?.role === "admin"
-                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                              : "bg-blue-500/15 text-blue-300 border-blue-500/30"
-                          }`}>
-                            {(u.user_roles as any)?.[0]?.role ?? "user"}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-4 text-muted-foreground">
-                          {new Date(u.created_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "games" && (
-          <div>
-            <h1 className="text-2xl font-bold mb-6">Game Management</h1>
-            {gamesLoading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[600px]">
-                  <thead className="text-muted-foreground text-left">
-                    <tr className="border-b border-border/50">
-                      <th className="py-2 pr-4">Name</th>
-                      <th className="py-2 pr-4">Slug</th>
-                      <th className="py-2 pr-4">Category</th>
-                      <th className="py-2 pr-4">Popular</th>
-                      <th className="py-2 pr-4">Active</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(games as any[]).map((g) => (
-                      <tr key={g.id} className="border-b border-border/30">
-                        <td className="py-3 pr-4 font-medium">{g.name}</td>
-                        <td className="py-3 pr-4 font-mono text-xs">{g.slug}</td>
-                        <td className="py-3 pr-4">{g.category ?? "—"}</td>
-                        <td className="py-3 pr-4">{g.is_popular ? "Yes" : "No"}</td>
-                        <td className="py-3 pr-4">{g.is_active ? "Yes" : "No"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "products" && (
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold">Product Management</h1>
-              <Button onClick={openAddProduct} className="gap-2 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring">
-                <Plus className="h-4 w-4" /> Add Product
-              </Button>
-            </div>
-            {productsLoading ? (
-              <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[700px]">
-                  <thead className="text-muted-foreground text-left">
-                    <tr className="border-b border-border/50">
-                      <th className="py-2 pr-4">Name</th>
-                      <th className="py-2 pr-4">Game</th>
-                      <th className="py-2 pr-4">Price</th>
-                      <th className="py-2 pr-4">Cost</th>
-                      <th className="py-2 pr-4">Active</th>
-                      <th className="py-2 pr-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(products as any[]).map((p) => (
-                      <tr key={p.id} className="border-b border-border/30">
-                        <td className="py-3 pr-4 font-medium">{p.name}</td>
-                        <td className="py-3 pr-4">{(p.games as any)?.name ?? "—"}</td>
-                        <td className="py-3 pr-4">{formatIDR(Number(p.price))}</td>
-                        <td className="py-3 pr-4">{formatIDR(Number(p.cost))}</td>
-                        <td className="py-3 pr-4">{p.is_active ? "Yes" : "No"}</td>
-                        <td className="py-3 pr-4">
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => openEditProduct(p)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-400 hover:text-red-300"
-                              onClick={() => openDeleteProduct(p.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {products.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="py-10 text-center text-muted-foreground">
-                          No products yet. Click "Add Product" to create one.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
+        {section === "dashboard" && renderDashboard()}
+        {section === "products" && renderProducts()}
+        {section === "transactions" && renderTransactions()}
+        {section === "settings" && renderSettings()}
       </main>
 
       {/* Product Add/Edit Dialog */}
