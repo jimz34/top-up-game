@@ -15,7 +15,6 @@ import {
   Check,
   Circle as XCircle,
   Clock,
-  CreditCard,
   Plus,
   Pencil,
   Trash2,
@@ -53,27 +52,24 @@ import { formatIDR } from "@/lib/games";
 /* ─── Status helpers ─── */
 
 const STATUS_OPTIONS = [
-  { value: "waiting_payment", label: "Waiting Payment" },
-  { value: "waiting_confirmation", label: "Waiting Confirmation" },
+  { value: "pending", label: "Pending" },
   { value: "processing", label: "Processing" },
-  { value: "completed", label: "Completed" },
-  { value: "failed", label: "Failed" },
+  { value: "success", label: "Success" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 const STATUS_STYLES: Record<string, string> = {
-  waiting_payment: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
-  waiting_confirmation: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
   processing: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  completed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  failed: "bg-red-500/15 text-red-300 border-red-500/30",
+  success: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  cancelled: "bg-red-500/15 text-red-300 border-red-500/30",
 };
 
 const STATUS_ICONS: Record<string, any> = {
-  waiting_payment: Clock,
-  waiting_confirmation: CreditCard,
+  pending: Clock,
   processing: Loader2,
-  completed: Check,
-  failed: XCircle,
+  success: Check,
+  cancelled: XCircle,
 };
 
 /* ─── Types ─── */
@@ -312,10 +308,10 @@ export default function AdminPage() {
   );
 
   /* ─── Dashboard stats ─── */
-  const totalRevenue = (txs as any[]).filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
-  const totalProfit = (txs as any[]).filter((t) => t.status === "completed").reduce((s, t) => s + (Number(t.amount) - Number(t.cost ?? 0)), 0);
-  const pendingCount = (txs as any[]).filter((t) => t.status === "waiting_payment" || t.status === "waiting_confirmation").length;
-  const completedCount = (txs as any[]).filter((t) => t.status === "completed").length;
+  const totalRevenue = (txs as any[]).filter((t) => t.status === "success").reduce((s, t) => s + Number(t.amount), 0);
+  const totalProfit = (txs as any[]).filter((t) => t.status === "success").reduce((s, t) => s + (Number(t.amount) - Number(t.cost ?? 0)), 0);
+  const pendingCount = (txs as any[]).filter((t) => t.status === "pending").length;
+  const completedCount = (txs as any[]).filter((t) => t.status === "success").length;
 
   const StatCard = ({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string; sub?: string; color: string }) => (
     <div className="glass-strong rounded-xl p-5 hover-glow">
@@ -336,9 +332,9 @@ export default function AdminPage() {
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={DollarSign} label="Revenue" value={formatIDR(totalRevenue)} sub={`${completedCount} completed orders`} color="bg-emerald-500/15 text-emerald-300" />
-        <StatCard icon={TrendingUp} label="Profit" value={formatIDR(totalProfit)} sub="From completed orders" color="bg-cyan-500/15 text-cyan-300" />
-        <StatCard icon={ShoppingCart} label="Pending" value={String(pendingCount)} sub="Awaiting payment/confirmation" color="bg-yellow-500/15 text-yellow-300" />
+        <StatCard icon={DollarSign} label="Revenue" value={formatIDR(totalRevenue)} sub={`${completedCount} successful orders`} color="bg-emerald-500/15 text-emerald-300" />
+        <StatCard icon={TrendingUp} label="Profit" value={formatIDR(totalProfit)} sub="From successful orders" color="bg-cyan-500/15 text-cyan-300" />
+        <StatCard icon={ShoppingCart} label="Pending" value={String(pendingCount)} sub="Awaiting processing" color="bg-yellow-500/15 text-yellow-300" />
         <StatCard icon={Package} label="Products" value={String(products.length)} sub={`${games.length} games`} color="bg-blue-500/15 text-blue-300" />
       </div>
 
@@ -368,7 +364,7 @@ export default function AdminPage() {
                     <td className="py-3 pr-3">
                       <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[t.status] ?? ""}`}>
                         <StatusIcon className={`h-3 w-3 ${t.status === "processing" ? "animate-spin" : ""}`} />
-                        {t.status?.replace(/_/g, " ")}
+                        {t.status}
                       </span>
                     </td>
                     <td className="py-3 pr-3 text-muted-foreground text-xs">
@@ -465,15 +461,13 @@ export default function AdminPage() {
         <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[700px]">
             <thead className="text-muted-foreground text-left">
               <tr className="border-b border-border/50">
                 <th className="py-2 pr-3">Order ID</th>
-                <th className="py-2 pr-3">User</th>
-                <th className="py-2 pr-3">Game</th>
-                <th className="py-2 pr-3">Package</th>
-                <th className="py-2 pr-3">Game User ID</th>
-                <th className="py-2 pr-3">Amount</th>
+                <th className="py-2 pr-3">Product</th>
+                <th className="py-2 pr-3">User ID</th>
+                <th className="py-2 pr-3">Qty</th>
                 <th className="py-2 pr-3">Status</th>
                 <th className="py-2 pr-3">Date</th>
                 <th className="py-2 pr-3">Action</th>
@@ -485,18 +479,13 @@ export default function AdminPage() {
                 return (
                   <tr key={t.id} className="border-b border-border/30">
                     <td className="py-3 pr-3 font-mono text-xs">{t.order_id}</td>
-                    <td className="py-3 pr-3">
-                      <div className="text-sm">{(t.profiles as any)?.display_name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{t.user_id?.slice(0, 8)}...</div>
-                    </td>
-                    <td className="py-3 pr-3">{t.games?.name ?? "—"}</td>
                     <td className="py-3 pr-3">{t.products?.name ?? "—"}</td>
-                    <td className="py-3 pr-3 font-mono text-xs">{t.user_game_id}</td>
-                    <td className="py-3 pr-3 font-medium">{formatIDR(Number(t.amount))}</td>
+                    <td className="py-3 pr-3 font-mono text-xs">{t.user_id?.slice(0, 8)}...</td>
+                    <td className="py-3 pr-3">{t.quantity ?? 1}</td>
                     <td className="py-3 pr-3">
                       <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[t.status] ?? ""}`}>
                         <StatusIcon className={`h-3 w-3 ${t.status === "processing" ? "animate-spin" : ""}`} />
-                        {t.status?.replace(/_/g, " ")}
+                        {t.status}
                       </span>
                     </td>
                     <td className="py-3 pr-3 text-muted-foreground text-xs">
@@ -507,7 +496,7 @@ export default function AdminPage() {
                         value={t.status}
                         onValueChange={(val) => handleStatusChange(t.id, val)}
                       >
-                        <SelectTrigger className="h-8 w-[160px] text-xs">
+                        <SelectTrigger className="h-8 w-[140px] text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -524,7 +513,7 @@ export default function AdminPage() {
               })}
               {txs.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-10 text-center text-muted-foreground">
                     No transactions yet.
                   </td>
                 </tr>

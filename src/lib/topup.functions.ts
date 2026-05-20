@@ -113,7 +113,7 @@ export async function checkIsAdmin(): Promise<boolean> {
 export async function adminListTransactions() {
   const { data, error } = await supabase
     .from("transactions")
-    .select("id, order_id, user_id, amount, status, payment_method, created_at, updated_at, user_game_id, server_id, notes, games(name, slug), products(name), profiles!transactions_user_id_fkey(display_name)")
+    .select("id, order_id, user_id, amount, quantity, status, payment_method, created_at, updated_at, user_game_id, server_id, notes, games(name, slug), products(name), profiles!transactions_user_id_fkey(display_name)")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
