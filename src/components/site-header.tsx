@@ -6,7 +6,6 @@ import {
   X,
   LogOut,
   LayoutDashboard,
-  Shield,
   Receipt,
   Package,
   MessageCircle,
@@ -99,7 +98,7 @@ export function SiteHeader() {
                       <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Dashboard
                     </Link>
                     <Link
-                      to="/dashboard"
+                      to="/dashboard?tab=transactions"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-secondary/60 transition-colors"
                     >
@@ -183,7 +182,7 @@ export function SiteHeader() {
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary/60 text-sm">
                   <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Dashboard
                 </Link>
-                <Link to="/dashboard" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary/60 text-sm">
+                <Link to="/dashboard?tab=transactions" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary/60 text-sm">
                   <Receipt className="h-4 w-4 text-[var(--neon)]" /> Transaction History
                 </Link>
                 <Link to="/games" onClick={() => setOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-secondary/60 text-sm">
