@@ -557,6 +557,7 @@ export default function AdminPage() {
         className="md:hidden fixed bottom-6 left-4 z-50 grid h-12 w-12 place-items-center rounded-full glass-strong shadow-lg neon-ring"
         onClick={() => setSidebarOpen(!sidebarOpen)}
         aria-label="Toggle sidebar"
+        style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
@@ -578,7 +579,7 @@ export default function AdminPage() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 p-4 md:p-8 overflow-auto">
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-auto">
         {section === "dashboard" && renderDashboard()}
         {section === "products" && renderProducts()}
         {section === "transactions" && renderTransactions()}

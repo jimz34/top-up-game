@@ -155,7 +155,7 @@ export default function HomePage() {
       </section>
 
       {/* CATEGORIES */}
-      <section className="container mx-auto px-4 py-12">
+      <section className="container mx-auto px-4 py-12 pb-24">
         <h2 className="text-2xl md:text-3xl font-bold mb-6">Categories</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {["MOBA", "Battle Royale", "FPS", "RPG"].map((c) => (

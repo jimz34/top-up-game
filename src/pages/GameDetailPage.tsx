@@ -129,7 +129,7 @@ export default function GameDetailPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-10">
+    <div className="container mx-auto px-4 py-10 pb-24">
       <Link to="/games" className="text-sm text-muted-foreground hover:text-foreground">
         All games
       </Link>
@@ -221,7 +221,7 @@ export default function GameDetailPage() {
           </Step>
         </div>
 
-        <aside className="glass-strong rounded-2xl p-6 h-fit sticky top-20">
+        <aside className="glass-strong rounded-2xl p-6 h-fit sticky top-20 max-lg:static max-lg:mt-6">
           <h3 className="font-bold text-lg">Order Summary</h3>
           <dl className="mt-4 space-y-2 text-sm">
             <Row label="Game" value={game.name} />

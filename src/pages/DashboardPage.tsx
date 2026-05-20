@@ -8,19 +8,17 @@ import { formatIDR } from "@/lib/games";
 import { useAuth } from "@/hooks/use-auth";
 
 const STATUS_STYLES: Record<string, string> = {
-  waiting_payment: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
-  waiting_confirmation: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
   processing: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  completed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  failed: "bg-red-500/15 text-red-300 border-red-500/30",
+  success: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  cancelled: "bg-red-500/15 text-red-300 border-red-500/30",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  waiting_payment: "Waiting Payment",
-  waiting_confirmation: "Waiting Confirmation",
+  pending: "Pending",
   processing: "Processing",
-  completed: "Completed",
-  failed: "Failed",
+  success: "Success",
+  cancelled: "Cancelled",
 };
 
 export default function DashboardPage() {
@@ -51,7 +49,7 @@ export default function DashboardPage() {
     );
 
   return (
-    <div className="container mx-auto px-4 py-10 space-y-6">
+    <div className="container mx-auto px-4 py-10 pb-24 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">
@@ -79,8 +77,8 @@ export default function DashboardPage() {
 
       <div className="grid sm:grid-cols-3 gap-4">
         <StatCard label="Total Orders" value={String(txs.length)} />
-        <StatCard label="Completed" value={String(txs.filter((t: any) => t.status === "completed").length)} />
-        <StatCard label="Active" value={String(txs.filter((t: any) => !["completed", "failed"].includes(t.status)).length)} />
+        <StatCard label="Completed" value={String(txs.filter((t: any) => t.status === "success").length)} />
+        <StatCard label="Active" value={String(txs.filter((t: any) => !["success", "cancelled"].includes(t.status)).length)} />
       </div>
 
       <section className="glass-strong rounded-2xl p-6">

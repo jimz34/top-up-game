@@ -32,7 +32,7 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/50 glass-strong">
+    <header className="sticky top-0 z-50 w-full border-b border-border/50 glass-strong">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 group">
           <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--gradient-primary)] neon-ring">
@@ -147,7 +147,7 @@ export function SiteHeader() {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden grid h-10 w-10 place-items-center rounded-md glass"
+          className="md:hidden grid h-10 w-10 place-items-center rounded-md bg-secondary/60 border border-border/50 text-foreground"
           onClick={() => setOpen((v) => !v)}
           aria-label="menu"
         >
@@ -157,7 +157,7 @@ export function SiteHeader() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-border/50 glass-strong px-4 py-4 space-y-1">
+        <div className="md:hidden border-t border-border/50 glass-strong px-4 py-4 space-y-2">
           {user ? (
             isAdmin ? (
               <>

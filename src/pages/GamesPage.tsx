@@ -10,7 +10,7 @@ export default function GamesPage() {
   });
 
   return (
-    <div className="container mx-auto px-4 py-10">
+    <div className="container mx-auto px-4 py-10 pb-24">
       <h1 className="text-3xl md:text-4xl font-bold">All Games</h1>
       <p className="text-muted-foreground mt-2">Pick a game to start your top-up.</p>
 
