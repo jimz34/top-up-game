@@ -83,6 +83,8 @@ type Section = "dashboard" | "products" | "transactions" | "settings";
 interface ProductForm {
   game_id: string;
   name: string;
+  description: string;
+  image_url: string;
   price: string;
   cost: string;
   sort_order: string;
@@ -92,6 +94,8 @@ interface ProductForm {
 const emptyProductForm: ProductForm = {
   game_id: "",
   name: "",
+  description: "",
+  image_url: "",
   price: "",
   cost: "0",
   sort_order: "0",
@@ -178,6 +182,8 @@ export default function AdminPage() {
     setProductForm({
       game_id: p.game_id ?? (p.games as any)?.id ?? "",
       name: p.name,
+      description: p.description ?? "",
+      image_url: p.image_url ?? "",
       price: String(p.price),
       cost: String(p.cost),
       sort_order: String(p.sort_order),
@@ -200,6 +206,8 @@ export default function AdminPage() {
       if (editingProductId) {
         await adminUpdateProduct(editingProductId, {
           name: productForm.name,
+          description: productForm.description || null,
+          image_url: productForm.image_url || null,
           price: Number(productForm.price),
           cost: Number(productForm.cost),
           sort_order: Number(productForm.sort_order),
@@ -211,6 +219,8 @@ export default function AdminPage() {
         await adminCreateProduct({
           game_id: productForm.game_id,
           name: productForm.name,
+          description: productForm.description || null,
+          image_url: productForm.image_url || null,
           price: Number(productForm.price),
           cost: Number(productForm.cost),
           sort_order: Number(productForm.sort_order),
@@ -386,13 +396,14 @@ export default function AdminPage() {
         <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[700px]">
+          <table className="w-full text-sm min-w-[800px]">
             <thead className="text-muted-foreground text-left">
               <tr className="border-b border-border/50">
+                <th className="py-2 pr-4">Image</th>
                 <th className="py-2 pr-4">Name</th>
+                <th className="py-2 pr-4">Category</th>
                 <th className="py-2 pr-4">Game</th>
                 <th className="py-2 pr-4">Price</th>
-                <th className="py-2 pr-4">Cost</th>
                 <th className="py-2 pr-4">Active</th>
                 <th className="py-2 pr-4">Actions</th>
               </tr>
@@ -400,10 +411,22 @@ export default function AdminPage() {
             <tbody>
               {(products as any[]).map((p) => (
                 <tr key={p.id} className="border-b border-border/30">
-                  <td className="py-3 pr-4 font-medium">{p.name}</td>
+                  <td className="py-3 pr-4">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-md object-cover" />
+                    ) : (
+                      <div className="h-10 w-10 rounded-md bg-secondary/60 grid place-items-center">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4">
+                    <div className="font-medium">{p.name}</div>
+                    {p.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{p.description}</div>}
+                  </td>
+                  <td className="py-3 pr-4 text-muted-foreground">{(p.games as any)?.category ?? "—"}</td>
                   <td className="py-3 pr-4">{(p.games as any)?.name ?? "—"}</td>
                   <td className="py-3 pr-4">{formatIDR(Number(p.price))}</td>
-                  <td className="py-3 pr-4">{formatIDR(Number(p.cost))}</td>
                   <td className="py-3 pr-4">
                     <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-red-500/15 text-red-300 border-red-500/30"}`}>
                       {p.is_active ? "Active" : "Inactive"}
@@ -423,7 +446,7 @@ export default function AdminPage() {
               ))}
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-10 text-center text-muted-foreground">
                     No products yet. Click "Add Product" to create one.
                   </td>
                 </tr>
@@ -597,13 +620,34 @@ export default function AdminPage() {
               </Select>
             </div>
             <div>
-              <Label>Product Name</Label>
+              <Label>Package Name</Label>
               <Input
                 className="mt-1"
                 value={productForm.name}
                 onChange={(e) => setProductForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. 86 Diamonds"
               />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Input
+                className="mt-1"
+                value={productForm.description}
+                onChange={(e) => setProductForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="e.g. 86 Diamonds + 5% bonus"
+              />
+            </div>
+            <div>
+              <Label>Image URL</Label>
+              <Input
+                className="mt-1"
+                value={productForm.image_url}
+                onChange={(e) => setProductForm((f) => ({ ...f, image_url: e.target.value }))}
+                placeholder="https://example.com/image.png"
+              />
+              {productForm.image_url && (
+                <img src={productForm.image_url} alt="Preview" className="mt-2 h-16 w-16 rounded-md object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

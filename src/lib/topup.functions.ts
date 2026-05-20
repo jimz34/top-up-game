@@ -139,7 +139,7 @@ export async function adminListGames() {
 export async function adminListProducts() {
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, price, cost, is_active, sort_order, games(name)")
+    .select("id, name, description, image_url, price, cost, is_active, sort_order, game_id, games(id, name, category)")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -158,6 +158,8 @@ export async function adminListUsers() {
 export async function adminCreateProduct(input: {
   game_id: string;
   name: string;
+  description?: string;
+  image_url?: string;
   price: number;
   cost: number;
   sort_order?: number;
@@ -168,6 +170,8 @@ export async function adminCreateProduct(input: {
     .insert({
       game_id: input.game_id,
       name: input.name,
+      description: input.description ?? null,
+      image_url: input.image_url ?? null,
       price: input.price,
       cost: input.cost,
       sort_order: input.sort_order ?? 0,
@@ -181,6 +185,8 @@ export async function adminCreateProduct(input: {
 
 export async function adminUpdateProduct(id: string, input: {
   name?: string;
+  description?: string;
+  image_url?: string;
   price?: number;
   cost?: number;
   sort_order?: number;
