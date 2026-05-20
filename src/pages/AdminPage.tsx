@@ -52,24 +52,27 @@ import { formatIDR } from "@/lib/games";
 /* ─── Status helpers ─── */
 
 const STATUS_OPTIONS = [
-  { value: "pending", label: "Pending" },
+  { value: "waiting_payment", label: "Waiting Payment" },
+  { value: "waiting_confirmation", label: "Waiting Confirmation" },
   { value: "processing", label: "Processing" },
-  { value: "success", label: "Success" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "completed", label: "Completed" },
+  { value: "failed", label: "Failed" },
 ];
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  waiting_payment: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+  waiting_confirmation: "bg-orange-500/15 text-orange-300 border-orange-500/30",
   processing: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-  success: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  cancelled: "bg-red-500/15 text-red-300 border-red-500/30",
+  completed: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  failed: "bg-red-500/15 text-red-300 border-red-500/30",
 };
 
 const STATUS_ICONS: Record<string, any> = {
-  pending: Clock,
+  waiting_payment: Clock,
+  waiting_confirmation: Clock,
   processing: Loader2,
-  success: Check,
-  cancelled: XCircle,
+  completed: Check,
+  failed: XCircle,
 };
 
 /* ─── Types ─── */
@@ -335,10 +338,10 @@ export default function AdminPage() {
   );
 
   /* ─── Dashboard stats ─── */
-  const totalRevenue = (txs as any[]).filter((t) => t.status === "success").reduce((s, t) => s + Number(t.amount), 0);
-  const totalProfit = (txs as any[]).filter((t) => t.status === "success").reduce((s, t) => s + (Number(t.amount) - Number(t.cost ?? 0)), 0);
-  const pendingCount = (txs as any[]).filter((t) => t.status === "pending").length;
-  const completedCount = (txs as any[]).filter((t) => t.status === "success").length;
+  const totalRevenue = (txs as any[]).filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
+  const totalProfit = (txs as any[]).filter((t) => t.status === "completed").reduce((s, t) => s + (Number(t.amount) - Number(t.cost ?? 0)), 0);
+  const pendingCount = (txs as any[]).filter((t) => t.status === "waiting_payment" || t.status === "waiting_confirmation").length;
+  const completedCount = (txs as any[]).filter((t) => t.status === "completed").length;
 
   const StatCard = ({ icon: Icon, label, value, sub, color }: { icon: any; label: string; value: string; sub?: string; color: string }) => (
     <div className="glass-strong rounded-xl p-5 hover-glow">

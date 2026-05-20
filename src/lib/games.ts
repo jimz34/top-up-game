@@ -12,6 +12,8 @@ export const GAME_IMAGES: Record<string, string> = {
   valorant: valo,
   "genshin-impact": gi,
   "honor-of-kings": hok,
+  instagram: "https://images.pexels.com/photos/1743498/pexels-photo-1743498.jpeg?auto=compress&cs=tinysrgb&w=512",
+  tiktok: "https://images.pexels.com/photos/6025496/pexels-photo-6025496.jpeg?auto=compress&cs=tinysrgb&w=512",
 };
 
 export function gameImage(slug: string): string {

@@ -157,8 +157,8 @@ export default function HomePage() {
       {/* CATEGORIES */}
       <section className="container mx-auto px-4 py-12 pb-24">
         <h2 className="text-2xl md:text-3xl font-bold mb-6">Categories</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {["MOBA", "Battle Royale", "FPS", "RPG"].map((c) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {["MOBA", "Battle Royale", "FPS", "RPG", "Social Media"].map((c) => (
             <div key={c} className="glass rounded-2xl p-6 hover-glow">
               <p className="text-xs uppercase tracking-widest text-[var(--neon)]">Category</p>
               <p className="mt-1 text-xl font-bold">{c}</p>

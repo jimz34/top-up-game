@@ -82,7 +82,7 @@ export async function createTransaction(input: {
       cost: totalCost,
       profit: totalAmount - totalCost,
       payment_method: input.paymentMethod,
-      status: "waiting_payment" as any,
+      status: "waiting_payment",
       quantity: qty,
       user_input: input.userInput ?? null,
     })
@@ -166,7 +166,7 @@ export async function adminListProducts() {
 export async function adminListUsers() {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, created_at, user_roles(role)")
+    .select("id, display_name, role, created_at")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];

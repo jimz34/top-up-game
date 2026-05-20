@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { WhatsAppFloat } from "@/components/whatsapp-float";
+import { AdminLayout } from "@/components/admin-layout";
 import HomePage from "@/pages/HomePage";
 import GamesPage from "@/pages/GamesPage";
 import GameDetailPage from "@/pages/GameDetailPage";
@@ -35,21 +36,35 @@ function NotFound() {
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
-      <SiteHeader />
-      <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/games" element={<GamesPage />} />
-          <Route path="/games/:slug" element={<GameDetailPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </main>
-      <SiteFooter />
-      <WhatsAppFloat />
+      <Routes>
+        {/* Admin routes — own layout, no site header/footer */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminPage />} />
+        </Route>
+
+        {/* Public routes — site header/footer */}
+        <Route
+          path="*"
+          element={
+            <>
+              <SiteHeader />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/games" element={<GamesPage />} />
+                  <Route path="/games/:slug" element={<GameDetailPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+              <SiteFooter />
+              <WhatsAppFloat />
+            </>
+          }
+        />
+      </Routes>
     </div>
   );
 }
