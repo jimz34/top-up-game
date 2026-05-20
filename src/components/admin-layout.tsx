@@ -3,7 +3,6 @@ import { Link, NavLink, useNavigate, Outlet } from "react-router-dom";
 import {
   LayoutDashboard,
   Receipt,
-  Users,
   Package,
   LogOut,
   Menu,
@@ -11,7 +10,6 @@ import {
   Settings,
   Gamepad2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,7 +19,6 @@ const navItems = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/transactions", label: "Transactions", icon: Receipt, end: false },
   { to: "/admin/products", label: "Products", icon: Package, end: false },
-  { to: "/admin/users", label: "Users", icon: Users, end: false },
   { to: "/admin/settings", label: "Settings", icon: Settings, end: false },
 ];
 
@@ -33,17 +30,22 @@ export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login?redirect=/admin");
+    if (loading) return;
+
+    if (!user) {
+      navigate("/login?redirect=/admin", { replace: true });
       return;
     }
-    if (!loading && user) {
-      checkIsAdmin().then((admin) => {
-        setIsAdmin(admin);
-        setChecking(false);
-        if (!admin) navigate("/dashboard");
-      });
-    }
+
+    let cancelled = false;
+    checkIsAdmin().then((admin) => {
+      if (cancelled) return;
+      setIsAdmin(admin);
+      setChecking(false);
+      if (!admin) navigate("/dashboard", { replace: true });
+    });
+
+    return () => { cancelled = true; };
   }, [loading, user, navigate]);
 
   const handleLogout = async () => {
@@ -54,13 +56,13 @@ export function AdminLayout() {
 
   if (loading || checking) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--neon)] border-t-transparent" />
       </div>
     );
   }
 
-  if (!isAdmin) return null;
+  if (!user || !isAdmin) return null;
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
@@ -117,7 +119,7 @@ export function AdminLayout() {
   );
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
+    <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-56 flex-col border-r border-border/50 glass-strong shrink-0">
         <SidebarContent />

@@ -1,16 +1,9 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Receipt,
-  Users,
   Package,
-  LogOut,
-  Menu,
-  X,
-  Settings,
-  Gamepad2,
   Loader as Loader2,
   Check,
   Circle as XCircle,
@@ -34,7 +27,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   adminListTransactions,
@@ -45,7 +37,6 @@ import {
   adminCreateProduct,
   adminUpdateProduct,
   adminDeleteProduct,
-  checkIsAdmin,
 } from "@/lib/topup.functions";
 import { formatIDR } from "@/lib/games";
 
@@ -122,13 +113,9 @@ const emptyProductForm: ProductForm = {
 /* ─── Component ─── */
 
 export default function AdminPage() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checking, setChecking] = useState(true);
   const [section, setSection] = useState<Section>("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Product CRUD state
   const [productDialogOpen, setProductDialogOpen] = useState(false);
@@ -138,43 +125,25 @@ export default function AdminPage() {
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate("/login?redirect=/admin");
-      return;
-    }
-    if (!loading && user) {
-      checkIsAdmin().then((admin) => {
-        setIsAdmin(admin);
-        setChecking(false);
-        if (!admin) navigate("/dashboard");
-      });
-    }
-  }, [loading, user, navigate]);
-
-  // Queries — always fetch so dashboard cards have data
+  // Queries
   const { data: txs = [], isLoading: txLoading } = useQuery({
     queryKey: ["admin-tx"],
     queryFn: () => adminListTransactions(),
-    enabled: isAdmin,
   });
 
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () => adminListUsers(),
-    enabled: isAdmin,
   });
 
   const { data: games = [], isLoading: gamesLoading } = useQuery({
     queryKey: ["admin-games"],
     queryFn: () => adminListGames(),
-    enabled: isAdmin,
   });
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: () => adminListProducts(),
-    enabled: isAdmin,
   });
 
   const handleStatusChange = async (txId: string, newStatus: string) => {
@@ -278,64 +247,13 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("Signed out");
-    navigate("/");
-  };
-
-  if (loading || checking)
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-
-  if (!isAdmin) return null;
-
-  /* ─── Sidebar nav items ─── */
-  const sidebarItems: { id: Section; label: string; icon: any }[] = [
+  /* ─── Section tabs ─── */
+  const sectionItems: { id: Section; label: string; icon: any }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "products", label: "Products", icon: Package },
     { id: "transactions", label: "Transactions", icon: Receipt },
-    { id: "settings", label: "Settings", icon: Settings },
+    { id: "settings", label: "Settings", icon: DollarSign },
   ];
-
-  const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-border/50">
-        <h2 className="font-bold flex items-center gap-2 text-sm">
-          <LayoutDashboard className="h-4 w-4 text-[var(--neon)]" /> Admin Panel
-        </h2>
-      </div>
-      <nav className="flex-1 p-2 space-y-0.5">
-        {sidebarItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              onClick={() => { setSection(item.id); onNavClick?.(); }}
-              className={`w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                section === item.id
-                  ? "bg-secondary text-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              }`}
-            >
-              <Icon className="h-4 w-4 shrink-0" /> {item.label}
-            </button>
-          );
-        })}
-      </nav>
-      <div className="p-2 border-t border-border/50">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-        >
-          <LogOut className="h-4 w-4 shrink-0" /> Logout
-        </button>
-      </div>
-    </div>
-  );
 
   /* ─── Dashboard stats ─── */
   const totalRevenue = (txs as any[]).filter((t) => t.status === "completed").reduce((s, t) => s + Number(t.amount), 0);
@@ -604,45 +522,31 @@ export default function AdminPage() {
   );
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 flex-col border-r border-border/50 glass-strong shrink-0">
-        <SidebarContent />
-      </aside>
+    <div className="p-4 md:p-8 pb-24 md:pb-8">
+      {/* Section tabs for mobile / quick nav */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 md:hidden">
+        {sectionItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setSection(item.id)}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors ${
+                section === item.id
+                  ? "bg-secondary text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <Icon className="h-4 w-4 shrink-0" /> {item.label}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* Mobile sidebar toggle */}
-      <button
-        className="md:hidden fixed bottom-6 left-4 z-50 grid h-12 w-12 place-items-center rounded-full glass-strong shadow-lg neon-ring"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        aria-label="Toggle sidebar"
-        style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
-      >
-        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
-
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <>
-          <div
-            className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-          <aside
-            className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-56 glass-strong border-r border-border/50"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SidebarContent onNavClick={() => setSidebarOpen(false)} />
-          </aside>
-        </>
-      )}
-
-      {/* Main content */}
-      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 overflow-auto">
-        {section === "dashboard" && renderDashboard()}
-        {section === "products" && renderProducts()}
-        {section === "transactions" && renderTransactions()}
-        {section === "settings" && renderSettings()}
-      </main>
+      {section === "dashboard" && renderDashboard()}
+      {section === "products" && renderProducts()}
+      {section === "transactions" && renderTransactions()}
+      {section === "settings" && renderSettings()}
 
       {/* Product Add/Edit Dialog */}
       <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
