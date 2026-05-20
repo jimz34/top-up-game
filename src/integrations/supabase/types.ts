@@ -58,11 +58,16 @@ export type Database = {
         Row: {
           cost: number
           created_at: string
+          description: string | null
           game_id: string
           id: string
+          image_url: string | null
           is_active: boolean
+          min_quantity: number | null
           name: string
           price: number
+          price_per_unit: number | null
+          product_type: string
           profit_margin: number | null
           sku: string | null
           sort_order: number
@@ -70,11 +75,16 @@ export type Database = {
         Insert: {
           cost?: number
           created_at?: string
+          description?: string | null
           game_id: string
           id?: string
+          image_url?: string | null
           is_active?: boolean
+          min_quantity?: number | null
           name: string
-          price: number
+          price?: number
+          price_per_unit?: number | null
+          product_type?: string
           profit_margin?: number | null
           sku?: string | null
           sort_order?: number
@@ -82,11 +92,16 @@ export type Database = {
         Update: {
           cost?: number
           created_at?: string
+          description?: string | null
           game_id?: string
           id?: string
+          image_url?: string | null
           is_active?: boolean
+          min_quantity?: number | null
           name?: string
           price?: number
+          price_per_unit?: number | null
+          product_type?: string
           profit_margin?: number | null
           sku?: string | null
           sort_order?: number
@@ -145,11 +160,13 @@ export type Database = {
           payment_method: string
           product_id: string
           profit: number
+          quantity: number
           server_id: string | null
           status: Database["public"]["Enums"]["tx_status"]
           updated_at: string
           user_game_id: string
           user_id: string
+          user_input: string | null
         }
         Insert: {
           amount: number
@@ -162,11 +179,13 @@ export type Database = {
           payment_method: string
           product_id: string
           profit?: number
+          quantity?: number
           server_id?: string | null
           status?: Database["public"]["Enums"]["tx_status"]
           updated_at?: string
           user_game_id: string
           user_id: string
+          user_input?: string | null
         }
         Update: {
           amount?: number
@@ -179,11 +198,13 @@ export type Database = {
           payment_method?: string
           product_id?: string
           profit?: number
+          quantity?: number
           server_id?: string | null
           status?: Database["public"]["Enums"]["tx_status"]
           updated_at?: string
           user_game_id?: string
           user_id?: string
+          user_input?: string | null
         }
         Relationships: [
           {

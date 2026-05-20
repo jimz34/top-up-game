@@ -76,6 +76,18 @@ const STATUS_ICONS: Record<string, any> = {
 
 type Section = "dashboard" | "products" | "transactions" | "settings";
 
+const PRODUCT_TYPE_OPTIONS = [
+  { value: "fixed", label: "Fixed Price" },
+  { value: "followers", label: "Followers (Custom Qty)" },
+  { value: "likes", label: "Likes (Custom Qty)" },
+];
+
+const PRODUCT_TYPE_BADGES: Record<string, string> = {
+  fixed: "bg-blue-500/15 text-blue-300 border-blue-500/30",
+  followers: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+  likes: "bg-pink-500/15 text-pink-300 border-pink-500/30",
+};
+
 interface ProductForm {
   game_id: string;
   name: string;
@@ -85,6 +97,9 @@ interface ProductForm {
   cost: string;
   sort_order: string;
   is_active: boolean;
+  product_type: string;
+  min_quantity: string;
+  price_per_unit: string;
 }
 
 const emptyProductForm: ProductForm = {
@@ -92,10 +107,13 @@ const emptyProductForm: ProductForm = {
   name: "",
   description: "",
   image_url: "",
-  price: "",
+  price: "0",
   cost: "0",
   sort_order: "0",
   is_active: true,
+  product_type: "fixed",
+  min_quantity: "",
+  price_per_unit: "",
 };
 
 /* ─── Component ─── */
@@ -180,10 +198,13 @@ export default function AdminPage() {
       name: p.name,
       description: p.description ?? "",
       image_url: p.image_url ?? "",
-      price: String(p.price),
-      cost: String(p.cost),
-      sort_order: String(p.sort_order),
+      price: String(p.price ?? 0),
+      cost: String(p.cost ?? 0),
+      sort_order: String(p.sort_order ?? 0),
       is_active: p.is_active,
+      product_type: p.product_type ?? "fixed",
+      min_quantity: p.min_quantity != null ? String(p.min_quantity) : "",
+      price_per_unit: p.price_per_unit != null ? String(p.price_per_unit) : "",
     });
     setProductDialogOpen(true);
   };
@@ -196,32 +217,38 @@ export default function AdminPage() {
   const handleSaveProduct = async () => {
     if (!productForm.name.trim()) return toast.error("Product name is required");
     if (!productForm.game_id) return toast.error("Select a game");
-    if (!productForm.price || Number(productForm.price) <= 0) return toast.error("Enter a valid price");
+
+    const isCustom = productForm.product_type === "followers" || productForm.product_type === "likes";
+    if (isCustom) {
+      if (!productForm.price_per_unit || Number(productForm.price_per_unit) <= 0)
+        return toast.error("Enter price per unit for this product type");
+      if (!productForm.min_quantity || Number(productForm.min_quantity) <= 0)
+        return toast.error("Enter minimum quantity");
+    } else {
+      if (!productForm.price || Number(productForm.price) <= 0)
+        return toast.error("Enter a valid price");
+    }
+
+    const sharedFields = {
+      name: productForm.name,
+      description: productForm.description || null,
+      image_url: productForm.image_url || null,
+      price: isCustom ? 0 : Number(productForm.price),
+      cost: Number(productForm.cost),
+      sort_order: Number(productForm.sort_order),
+      is_active: productForm.is_active,
+      product_type: productForm.product_type,
+      min_quantity: isCustom && productForm.min_quantity ? Number(productForm.min_quantity) : null,
+      price_per_unit: isCustom && productForm.price_per_unit ? Number(productForm.price_per_unit) : null,
+    };
+
     setSaving(true);
     try {
       if (editingProductId) {
-        await adminUpdateProduct(editingProductId, {
-          name: productForm.name,
-          description: productForm.description || null,
-          image_url: productForm.image_url || null,
-          price: Number(productForm.price),
-          cost: Number(productForm.cost),
-          sort_order: Number(productForm.sort_order),
-          is_active: productForm.is_active,
-          game_id: productForm.game_id,
-        });
+        await adminUpdateProduct(editingProductId, { ...sharedFields, game_id: productForm.game_id });
         toast.success("Product updated");
       } else {
-        await adminCreateProduct({
-          game_id: productForm.game_id,
-          name: productForm.name,
-          description: productForm.description || null,
-          image_url: productForm.image_url || null,
-          price: Number(productForm.price),
-          cost: Number(productForm.cost),
-          sort_order: Number(productForm.sort_order),
-          is_active: productForm.is_active,
-        });
+        await adminCreateProduct({ game_id: productForm.game_id, ...sharedFields });
         toast.success("Product created");
       }
       setProductDialogOpen(false);
@@ -392,57 +419,72 @@ export default function AdminPage() {
         <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[900px]">
             <thead className="text-muted-foreground text-left">
               <tr className="border-b border-border/50">
                 <th className="py-2 pr-4">Image</th>
                 <th className="py-2 pr-4">Name</th>
-                <th className="py-2 pr-4">Category</th>
+                <th className="py-2 pr-4">Type</th>
                 <th className="py-2 pr-4">Game</th>
-                <th className="py-2 pr-4">Price</th>
+                <th className="py-2 pr-4">Price / Unit</th>
+                <th className="py-2 pr-4">Min Qty</th>
                 <th className="py-2 pr-4">Active</th>
                 <th className="py-2 pr-4">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {(products as any[]).map((p) => (
-                <tr key={p.id} className="border-b border-border/30">
-                  <td className="py-3 pr-4">
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-md object-cover" />
-                    ) : (
-                      <div className="h-10 w-10 rounded-md bg-secondary/60 grid place-items-center">
-                        <Package className="h-4 w-4 text-muted-foreground" />
+              {(products as any[]).map((p) => {
+                const isCustom = p.product_type === "followers" || p.product_type === "likes";
+                return (
+                  <tr key={p.id} className="border-b border-border/30">
+                    <td className="py-3 pr-4">
+                      {p.image_url ? (
+                        <img src={p.image_url} alt={p.name} className="h-10 w-10 rounded-md object-cover" />
+                      ) : (
+                        <div className="h-10 w-10 rounded-md bg-secondary/60 grid place-items-center">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="font-medium">{p.name}</div>
+                      {p.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{p.description}</div>}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs capitalize ${PRODUCT_TYPE_BADGES[p.product_type ?? "fixed"] ?? ""}`}>
+                        {p.product_type ?? "fixed"}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4">{(p.games as any)?.name ?? "—"}</td>
+                    <td className="py-3 pr-4">
+                      {isCustom && p.price_per_unit != null
+                        ? <span>{formatIDR(Number(p.price_per_unit))}<span className="text-muted-foreground text-xs"> /unit</span></span>
+                        : formatIDR(Number(p.price))}
+                    </td>
+                    <td className="py-3 pr-4 text-muted-foreground">
+                      {p.min_quantity != null ? p.min_quantity.toLocaleString() : "—"}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-red-500/15 text-red-300 border-red-500/30"}`}>
+                        {p.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProduct(p)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => openDeleteProduct(p.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                    )}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <div className="font-medium">{p.name}</div>
-                    {p.description && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{p.description}</div>}
-                  </td>
-                  <td className="py-3 pr-4 text-muted-foreground">{(p.games as any)?.category ?? "—"}</td>
-                  <td className="py-3 pr-4">{(p.games as any)?.name ?? "—"}</td>
-                  <td className="py-3 pr-4">{formatIDR(Number(p.price))}</td>
-                  <td className="py-3 pr-4">
-                    <span className={`inline-block rounded-full border px-2 py-0.5 text-xs ${p.is_active ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" : "bg-red-500/15 text-red-300 border-red-500/30"}`}>
-                      {p.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-4">
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProduct(p)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => openDeleteProduct(p.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-muted-foreground">
+                  <td colSpan={8} className="py-10 text-center text-muted-foreground">
                     No products yet. Click "Add Product" to create one.
                   </td>
                 </tr>
@@ -461,13 +503,15 @@ export default function AdminPage() {
         <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[700px]">
+          <table className="w-full text-sm min-w-[900px]">
             <thead className="text-muted-foreground text-left">
               <tr className="border-b border-border/50">
                 <th className="py-2 pr-3">Order ID</th>
                 <th className="py-2 pr-3">Product</th>
-                <th className="py-2 pr-3">User ID</th>
+                <th className="py-2 pr-3">Type</th>
                 <th className="py-2 pr-3">Qty</th>
+                <th className="py-2 pr-3">Total</th>
+                <th className="py-2 pr-3">User Input</th>
                 <th className="py-2 pr-3">Status</th>
                 <th className="py-2 pr-3">Date</th>
                 <th className="py-2 pr-3">Action</th>
@@ -476,12 +520,28 @@ export default function AdminPage() {
             <tbody>
               {(txs as any[]).map((t) => {
                 const StatusIcon = STATUS_ICONS[t.status] ?? Clock;
+                const ptype = t.products?.product_type ?? "fixed";
                 return (
                   <tr key={t.id} className="border-b border-border/30">
                     <td className="py-3 pr-3 font-mono text-xs">{t.order_id}</td>
-                    <td className="py-3 pr-3">{t.products?.name ?? "—"}</td>
-                    <td className="py-3 pr-3 font-mono text-xs">{t.user_id?.slice(0, 8)}...</td>
-                    <td className="py-3 pr-3">{t.quantity ?? 1}</td>
+                    <td className="py-3 pr-3">
+                      <div>{t.products?.name ?? "—"}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{t.user_game_id}</div>
+                    </td>
+                    <td className="py-3 pr-3">
+                      <span className={`inline-block rounded-full border px-2 py-0.5 text-xs capitalize ${PRODUCT_TYPE_BADGES[ptype] ?? ""}`}>
+                        {ptype}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-3 font-medium">
+                      {(t.quantity ?? 1).toLocaleString()}
+                    </td>
+                    <td className="py-3 pr-3 font-medium">{formatIDR(Number(t.amount))}</td>
+                    <td className="py-3 pr-3 max-w-[140px]">
+                      {t.user_input
+                        ? <span className="text-xs text-muted-foreground truncate block" title={t.user_input}>{t.user_input}</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
                     <td className="py-3 pr-3">
                       <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[t.status] ?? ""}`}>
                         <StatusIcon className={`h-3 w-3 ${t.status === "processing" ? "animate-spin" : ""}`} />
@@ -492,18 +552,13 @@ export default function AdminPage() {
                       {new Date(t.created_at).toLocaleDateString()}
                     </td>
                     <td className="py-3 pr-3">
-                      <Select
-                        value={t.status}
-                        onValueChange={(val) => handleStatusChange(t.id, val)}
-                      >
-                        <SelectTrigger className="h-8 w-[140px] text-xs">
+                      <Select value={t.status} onValueChange={(val) => handleStatusChange(t.id, val)}>
+                        <SelectTrigger className="h-8 w-[130px] text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -513,7 +568,7 @@ export default function AdminPage() {
               })}
               {txs.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-muted-foreground">
+                  <td colSpan={9} className="py-10 text-center text-muted-foreground">
                     No transactions yet.
                   </td>
                 </tr>
@@ -592,7 +647,7 @@ export default function AdminPage() {
           <DialogHeader>
             <DialogTitle>{editingProductId ? "Edit Product" : "Add Product"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
             <div>
               <Label>Game</Label>
               <Select
@@ -605,6 +660,22 @@ export default function AdminPage() {
                 <SelectContent>
                   {(games as any[]).map((g: any) => (
                     <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Product Type</Label>
+              <Select
+                value={productForm.product_type}
+                onValueChange={(val) => setProductForm((f) => ({ ...f, product_type: val }))}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCT_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -639,28 +710,72 @@ export default function AdminPage() {
                 <img src={productForm.image_url} alt="Preview" className="mt-2 h-16 w-16 rounded-md object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
               )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Price (IDR)</Label>
-                <Input
-                  className="mt-1"
-                  type="number"
-                  value={productForm.price}
-                  onChange={(e) => setProductForm((f) => ({ ...f, price: e.target.value }))}
-                  placeholder="19000"
-                />
+
+            {/* Custom quantity fields */}
+            {(productForm.product_type === "followers" || productForm.product_type === "likes") ? (
+              <div className="rounded-xl border border-[var(--neon)]/20 bg-[var(--neon)]/5 p-4 space-y-3">
+                <p className="text-xs font-semibold text-[var(--neon)] uppercase tracking-wider">Custom Quantity Settings</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Price Per Unit (IDR)</Label>
+                    <Input
+                      className="mt-1"
+                      type="number"
+                      value={productForm.price_per_unit}
+                      onChange={(e) => setProductForm((f) => ({ ...f, price_per_unit: e.target.value }))}
+                      placeholder="50"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      e.g. 50 = 100 units costs 5,000
+                    </p>
+                  </div>
+                  <div>
+                    <Label>Minimum Quantity</Label>
+                    <Input
+                      className="mt-1"
+                      type="number"
+                      value={productForm.min_quantity}
+                      onChange={(e) => setProductForm((f) => ({ ...f, min_quantity: e.target.value }))}
+                      placeholder={productForm.product_type === "followers" ? "100" : "1000"}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Cost Per Unit (IDR)</Label>
+                  <Input
+                    className="mt-1"
+                    type="number"
+                    value={productForm.cost}
+                    onChange={(e) => setProductForm((f) => ({ ...f, cost: e.target.value }))}
+                    placeholder="40"
+                  />
+                </div>
               </div>
-              <div>
-                <Label>Cost (IDR)</Label>
-                <Input
-                  className="mt-1"
-                  type="number"
-                  value={productForm.cost}
-                  onChange={(e) => setProductForm((f) => ({ ...f, cost: e.target.value }))}
-                  placeholder="15000"
-                />
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Price (IDR)</Label>
+                  <Input
+                    className="mt-1"
+                    type="number"
+                    value={productForm.price}
+                    onChange={(e) => setProductForm((f) => ({ ...f, price: e.target.value }))}
+                    placeholder="19000"
+                  />
+                </div>
+                <div>
+                  <Label>Cost (IDR)</Label>
+                  <Input
+                    className="mt-1"
+                    type="number"
+                    value={productForm.cost}
+                    onChange={(e) => setProductForm((f) => ({ ...f, cost: e.target.value }))}
+                    placeholder="15000"
+                  />
+                </div>
               </div>
-            </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Sort Order</Label>

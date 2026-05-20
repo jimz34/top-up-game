@@ -24,7 +24,7 @@ export async function getGameWithProducts(slug: string) {
   if (!game) return null;
   const { data: products, error: pe } = await supabase
     .from("products")
-    .select("id, name, price, sort_order")
+    .select("id, name, price, sort_order, product_type, min_quantity, price_per_unit, description")
     .eq("game_id", game.id)
     .eq("is_active", true)
     .order("sort_order");
@@ -38,6 +38,8 @@ export async function createTransaction(input: {
   userGameId: string;
   serverId?: string | null;
   paymentMethod: "qris";
+  quantity?: number;
+  userInput?: string | null;
 }) {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
@@ -45,12 +47,25 @@ export async function createTransaction(input: {
 
   const { data: product, error: pe } = await supabase
     .from("products")
-    .select("id, price, cost, game_id")
+    .select("id, price, cost, game_id, product_type, min_quantity, price_per_unit")
     .eq("id", input.productId)
     .eq("is_active", true)
     .maybeSingle();
   if (pe || !product) throw new Error("Product not found");
   if (product.game_id !== input.gameId) throw new Error("Product/game mismatch");
+
+  const qty = input.quantity ?? 1;
+  let totalAmount: number;
+  let totalCost: number;
+
+  const isCustomQty = product.product_type === "followers" || product.product_type === "likes";
+  if (isCustomQty && product.price_per_unit != null) {
+    totalAmount = Number(product.price_per_unit) * qty;
+    totalCost = Number(product.cost) * qty;
+  } else {
+    totalAmount = Number(product.price);
+    totalCost = Number(product.cost);
+  }
 
   const orderId = `NT${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
@@ -63,11 +78,13 @@ export async function createTransaction(input: {
       product_id: input.productId,
       user_game_id: input.userGameId,
       server_id: input.serverId ?? null,
-      amount: product.price,
-      cost: product.cost,
-      profit: Number(product.price) - Number(product.cost),
+      amount: totalAmount,
+      cost: totalCost,
+      profit: totalAmount - totalCost,
       payment_method: input.paymentMethod,
-      status: "waiting_payment",
+      status: "waiting_payment" as any,
+      quantity: qty,
+      user_input: input.userInput ?? null,
     })
     .select("order_id, status")
     .single();
@@ -78,7 +95,7 @@ export async function createTransaction(input: {
 export async function listMyTransactions() {
   const { data, error } = await supabase
     .from("transactions")
-    .select("id, order_id, amount, status, payment_method, created_at, user_game_id, server_id, games(name, slug), products(name)")
+    .select("id, order_id, amount, quantity, status, payment_method, created_at, user_game_id, server_id, user_input, games(name, slug), products(name, product_type)")
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) throw new Error(error.message);
@@ -113,7 +130,7 @@ export async function checkIsAdmin(): Promise<boolean> {
 export async function adminListTransactions() {
   const { data, error } = await supabase
     .from("transactions")
-    .select("id, order_id, user_id, amount, quantity, status, payment_method, created_at, updated_at, user_game_id, server_id, notes, games(name, slug), products(name), profiles!transactions_user_id_fkey(display_name)")
+    .select("id, order_id, user_id, amount, quantity, user_input, status, payment_method, created_at, updated_at, user_game_id, server_id, notes, games(name, slug), products(name, product_type), profiles!transactions_user_id_fkey(display_name)")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -139,7 +156,7 @@ export async function adminListGames() {
 export async function adminListProducts() {
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, description, image_url, price, cost, is_active, sort_order, game_id, games(id, name, category)")
+    .select("id, name, description, image_url, price, cost, is_active, sort_order, game_id, product_type, min_quantity, price_per_unit, games(id, name, category)")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
@@ -158,12 +175,15 @@ export async function adminListUsers() {
 export async function adminCreateProduct(input: {
   game_id: string;
   name: string;
-  description?: string;
-  image_url?: string;
-  price: number;
-  cost: number;
+  description?: string | null;
+  image_url?: string | null;
+  price?: number;
+  cost?: number;
   sort_order?: number;
   is_active?: boolean;
+  product_type?: string;
+  min_quantity?: number | null;
+  price_per_unit?: number | null;
 }) {
   const { data, error } = await supabase
     .from("products")
@@ -172,10 +192,13 @@ export async function adminCreateProduct(input: {
       name: input.name,
       description: input.description ?? null,
       image_url: input.image_url ?? null,
-      price: input.price,
-      cost: input.cost,
+      price: input.price ?? 0,
+      cost: input.cost ?? 0,
       sort_order: input.sort_order ?? 0,
       is_active: input.is_active ?? true,
+      product_type: input.product_type ?? "fixed",
+      min_quantity: input.min_quantity ?? null,
+      price_per_unit: input.price_per_unit ?? null,
     })
     .select("id, name")
     .single();
@@ -185,13 +208,16 @@ export async function adminCreateProduct(input: {
 
 export async function adminUpdateProduct(id: string, input: {
   name?: string;
-  description?: string;
-  image_url?: string;
+  description?: string | null;
+  image_url?: string | null;
   price?: number;
   cost?: number;
   sort_order?: number;
   is_active?: boolean;
   game_id?: string;
+  product_type?: string;
+  min_quantity?: number | null;
+  price_per_unit?: number | null;
 }) {
   const { error } = await supabase
     .from("products")
