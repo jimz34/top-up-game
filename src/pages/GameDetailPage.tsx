@@ -123,7 +123,6 @@ export default function GameDetailPage() {
         <QrisModal
           open={qrisModalOpen}
           onClose={() => setQrisModalOpen(false)}
-          onConfirmPayment={handleConfirmPayment}
         />
       </div>
     );
@@ -254,7 +253,6 @@ export default function GameDetailPage() {
       <QrisModal
         open={qrisModalOpen}
         onClose={() => setQrisModalOpen(false)}
-        onConfirmPayment={handleConfirmPayment}
       />
     </div>
   );
