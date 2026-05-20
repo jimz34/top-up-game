@@ -77,7 +77,7 @@ export function AdminLayout() {
             <Gamepad2 className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="font-bold text-sm">
-            <span className="neon-text">Neon</span>Top Admin
+            <span className="neon-text">JIMZ</span>STORE Admin
           </span>
         </Link>
       </div>

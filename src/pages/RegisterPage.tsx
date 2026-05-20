@@ -36,7 +36,7 @@ export default function RegisterPage() {
       <div className="glass-strong rounded-3xl p-8 neon-ring">
         <h1 className="text-2xl font-bold">Create your account</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Join NeonTop and start topping up in seconds.
+          Join JIMZSTORE and start topping up in seconds.
         </p>
         <form onSubmit={submit} className="mt-6 space-y-4">
           <div>

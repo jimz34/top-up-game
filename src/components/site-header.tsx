@@ -39,7 +39,7 @@ export function SiteHeader() {
             <Gamepad2 className="h-5 w-5 text-primary-foreground" />
           </div>
           <span className="text-lg font-bold tracking-tight">
-            <span className="neon-text">Neon</span>Top
+            <span className="neon-text">JIMZ</span>STORE
           </span>
         </Link>
 
@@ -112,7 +112,7 @@ export function SiteHeader() {
                       <Package className="h-4 w-4 text-[var(--neon)]" /> Products
                     </Link>
                     <a
-                      href="https://wa.me/62895392230443?text=Hi%20NeonTop%2C%20I%20need%20help"
+                      href="https://wa.me/62895392230443?text=Hi%20JIMZSTORE%2C%20I%20need%20help"
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => setUserMenuOpen(false)}
@@ -189,7 +189,7 @@ export function SiteHeader() {
                   <Package className="h-4 w-4 text-[var(--neon)]" /> Products
                 </Link>
                 <a
-                  href="https://wa.me/62895392230443?text=Hi%20NeonTop%2C%20I%20need%20help"
+                  href="https://wa.me/62895392230443?text=Hi%20JIMZSTORE%2C%20I%20need%20help"
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setOpen(false)}

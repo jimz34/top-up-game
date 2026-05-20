@@ -64,7 +64,7 @@ export default function DashboardPage() {
             </Button>
           </Link>
           <a
-            href="https://wa.me/62895392230443?text=Hi%20NeonTop%2C%20I%20need%20help"
+            href="https://wa.me/62895392230443?text=Hi%20JIMZSTORE%2C%20I%20need%20help"
             target="_blank"
             rel="noopener noreferrer"
           >

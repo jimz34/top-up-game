@@ -5,7 +5,7 @@ export function SiteFooter() {
     <footer className="border-t border-border/50 mt-20">
       <div className="container mx-auto px-4 py-10 grid gap-8 md:grid-cols-3">
         <div>
-          <h3 className="text-lg font-bold neon-text">NeonTop</h3>
+          <h3 className="text-lg font-bold neon-text">JIMZSTORE</h3>
           <p className="mt-2 text-sm text-muted-foreground max-w-sm">
             Premium gaming top-up. Instant delivery, secure payments, 24/7 support.
           </p>
@@ -25,7 +25,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border/50 py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} NeonTop. All rights reserved.
+        © {new Date().getFullYear()} JIMZSTORE. All rights reserved.
       </div>
     </footer>
   );
