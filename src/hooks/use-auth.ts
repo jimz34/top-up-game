@@ -14,8 +14,12 @@ export function useAuth(): AuthState {
 
   useEffect(() => {
     const checkAdmin = async (userId: string) => {
-      const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
-      return !!data;
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle();
+      return data?.role === "admin";
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

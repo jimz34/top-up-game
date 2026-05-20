@@ -118,12 +118,13 @@ export async function getMyProfile() {
 export async function checkIsAdmin(): Promise<boolean> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return false;
-  const { data, error } = await supabase.rpc("has_role", {
-    _user_id: session.user.id,
-    _role: "admin",
-  });
-  if (error) return false;
-  return !!data;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", session.user.id)
+    .maybeSingle();
+  if (error || !data) return false;
+  return data.role === "admin";
 }
 
 // Admin functions
