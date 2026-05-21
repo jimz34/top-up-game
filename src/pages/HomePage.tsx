@@ -14,10 +14,16 @@ export default function HomePage() {
     queryFn: () => listGames(),
   });
 
-  const { data: products = [] } = useQuery({
+  const productsQuery = useQuery({
     queryKey: ["products", "active"],
-    queryFn: () => listActiveProducts(),
+    queryFn: listActiveProducts,
   });
+  const products = productsQuery.data ?? [];
+
+  console.log("[HomePage] productsQuery status:", productsQuery.status,
+    "| data:", products.length, "items",
+    "| error:", productsQuery.error?.message ?? "none",
+    "| fetchStatus:", productsQuery.fetchStatus);
 
   const [q, setQ] = useState("");
   const filtered = games.filter(
@@ -135,6 +141,18 @@ export default function HomePage() {
             <h2 className="text-2xl md:text-3xl font-bold mt-1">All Products</h2>
           </div>
         </div>
+        {productsQuery.isLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="glass rounded-2xl aspect-[4/3] animate-pulse" />
+            ))}
+          </div>
+        ) : productsQuery.isError ? (
+          <div className="glass rounded-2xl p-8 text-center">
+            <p className="text-red-400">Failed to load products: {productsQuery.error?.message ?? "Unknown error"}</p>
+            <button onClick={() => productsQuery.refetch()} className="mt-3 text-sm text-[var(--neon)] underline">Retry</button>
+          </div>
+        ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filteredProducts.map((p) => {
             const game = p.games as any;
@@ -176,10 +194,11 @@ export default function HomePage() {
           })}
           {filteredProducts.length === 0 && (
             <p className="col-span-full text-muted-foreground text-center py-12">
-              No products match your search.
+              No products available yet.
             </p>
           )}
         </div>
+        )}
       </section>
 
       {/* ALL GAMES */}

@@ -21,5 +21,6 @@ export function gameImage(slug: string): string {
 }
 
 export function formatIDR(n: number): string {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+  const safe = typeof n === "number" && isFinite(n) ? n : 0;
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(safe);
 }

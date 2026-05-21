@@ -14,31 +14,57 @@ export async function listGames(opts?: { popularOnly?: boolean }) {
 }
 
 export async function listActiveProducts() {
-  // Fetch products and games separately then merge client-side to avoid
-  // PostgREST join issues that silently return null for the games field.
-  const [productsRes, gamesRes] = await Promise.all([
-    supabase
+  console.log("[listActiveProducts] START");
+
+  try {
+    // Step 1: fetch products raw
+    const productsRes = await supabase
       .from("products")
       .select("id, game_id, name, price, image_url, description, product_type, price_per_unit, min_quantity, sort_order")
       .eq("is_active", true)
-      .order("sort_order"),
-    supabase
+      .order("sort_order");
+
+    console.log("[listActiveProducts] products raw:", productsRes.data?.length ?? 0, "rows, error:", productsRes.error?.message ?? "none");
+
+    if (productsRes.error) {
+      console.error("[listActiveProducts] PRODUCTS QUERY FAILED:", productsRes.error);
+      return [];
+    }
+
+    const rawProducts = productsRes.data ?? [];
+    if (rawProducts.length === 0) {
+      console.warn("[listActiveProducts] No active products found in DB");
+      return [];
+    }
+
+    // Step 2: fetch games for lookup
+    const gamesRes = await supabase
       .from("games")
       .select("id, slug, name, category, image_url")
-      .eq("is_active", true),
-  ]);
+      .eq("is_active", true);
 
-  if (productsRes.error) throw new Error(productsRes.error.message);
-  if (gamesRes.error) throw new Error(gamesRes.error.message);
+    console.log("[listActiveProducts] games raw:", gamesRes.data?.length ?? 0, "rows, error:", gamesRes.error?.message ?? "none");
 
-  const gameMap = new Map((gamesRes.data ?? []).map((g) => [g.id, g]));
-  const products = (productsRes.data ?? []).map((p) => ({
-    ...p,
-    games: gameMap.get(p.game_id) ?? null,
-  }));
+    if (gamesRes.error) {
+      console.error("[listActiveProducts] GAMES QUERY FAILED:", gamesRes.error);
+      // Still return products without game info rather than nothing
+      return rawProducts.map((p) => ({ ...p, games: null }));
+    }
 
-  console.log("[listActiveProducts] fetched:", products.length, "products,", (gamesRes.data ?? []).length, "games");
-  return products;
+    // Step 3: merge
+    const gameMap = new Map((gamesRes.data ?? []).map((g) => [g.id, g]));
+    const products = rawProducts.map((p) => ({
+      ...p,
+      games: gameMap.get(p.game_id) ?? null,
+    }));
+
+    console.log("[listActiveProducts] DONE:", products.length, "products merged");
+    console.log("[listActiveProducts] sample:", JSON.stringify(products[0]));
+    return products;
+  } catch (err) {
+    console.error("[listActiveProducts] UNHANDLED ERROR:", err);
+    return [];
+  }
 }
 
 export async function getGameWithProducts(slug: string) {
