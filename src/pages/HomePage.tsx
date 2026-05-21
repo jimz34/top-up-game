@@ -4,8 +4,8 @@ import { Sparkles, Zap, ShieldCheck, Search } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { listGames } from "@/lib/topup.functions";
-import { gameImage } from "@/lib/games";
+import { listGames, listActiveProducts } from "@/lib/topup.functions";
+import { gameImage, formatIDR } from "@/lib/games";
 import heroBg from "@/assets/hero-bg.jpg";
 
 export default function HomePage() {
@@ -13,6 +13,12 @@ export default function HomePage() {
     queryKey: ["games", "all"],
     queryFn: () => listGames(),
   });
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["products", "active"],
+    queryFn: () => listActiveProducts(),
+  });
+
   const [q, setQ] = useState("");
   const filtered = games.filter(
     (g) =>
@@ -20,6 +26,13 @@ export default function HomePage() {
       (g.category ?? "").toLowerCase().includes(q.toLowerCase())
   );
   const popular = filtered.filter((g) => g.is_popular).slice(0, 6);
+
+  const filteredProducts = products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(q.toLowerCase()) ||
+      ((p.games as any)?.name ?? "").toLowerCase().includes(q.toLowerCase()) ||
+      ((p.games as any)?.category ?? "").toLowerCase().includes(q.toLowerCase())
+  );
 
   return (
     <div>
@@ -53,10 +66,10 @@ export default function HomePage() {
               <Input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search a game (e.g. Mobile Legends, Free Fire)…"
+                placeholder="Search a game or product (e.g. Mobile Legends, Free Fire)…"
                 className="border-0 bg-transparent focus-visible:ring-0 text-base"
               />
-              <Button size="sm" className="bg-[var(--gradient-primary)] text-primary-foreground">
+              <Button size="sm" className="bg-[var(--neon)] text-[oklch(0.08_0.04_258)] hover:bg-[var(--neon)]/90 font-semibold">
                 Search
               </Button>
             </div>
@@ -75,14 +88,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* POPULAR */}
+      {/* POPULAR GAMES */}
       <section className="container mx-auto px-4 py-12 md:py-16">
         <div className="flex items-end justify-between mb-6">
           <div>
             <p className="text-xs uppercase tracking-widest text-[var(--neon)]">Most played</p>
             <h2 className="text-2xl md:text-3xl font-bold mt-1">Popular Games</h2>
           </div>
-          <Link to="/games" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link to="/games" className="text-sm text-[var(--neon)] hover:text-[var(--neon-soft)]">
             View all →
           </Link>
         </div>
@@ -112,7 +125,62 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ALL */}
+      {/* ALL PRODUCTS */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-[var(--neon)]">Shop</p>
+            <h2 className="text-2xl md:text-3xl font-bold mt-1">All Products</h2>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {filteredProducts.map((p) => {
+            const game = p.games as any;
+            const slug = game?.slug ?? "";
+            const isCustom = p.product_type === "followers" || p.product_type === "likes";
+            const displayPrice = isCustom && p.price_per_unit != null
+              ? Number(p.price_per_unit)
+              : Number(p.price);
+            const priceLabel = isCustom ? `${formatIDR(displayPrice)}/unit` : formatIDR(displayPrice);
+
+            return (
+              <Link
+                key={p.id}
+                to={`/games/${slug}`}
+                className="group glass rounded-2xl overflow-hidden hover-glow"
+              >
+                <div className="aspect-[4/3] overflow-hidden relative">
+                  <img
+                    src={p.image_url || (game ? gameImage(game.slug) : gameImage(slug))}
+                    alt={p.name}
+                    width={512}
+                    height={384}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {game?.category && (
+                    <span className="absolute top-2 left-2 text-[10px] uppercase tracking-wider rounded-full bg-black/60 backdrop-blur-sm border border-[var(--neon)]/30 px-2 py-0.5 text-[var(--neon)] font-medium">
+                      {game.category}
+                    </span>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="text-xs text-muted-foreground truncate">{game?.name ?? ""}</p>
+                  <p className="text-sm font-semibold truncate mt-0.5">{p.name}</p>
+                  <p className="text-sm font-bold text-[var(--neon)] mt-1">{priceLabel}</p>
+                </div>
+              </Link>
+            );
+          })}
+          {filteredProducts.length === 0 && (
+            <p className="col-span-full text-muted-foreground text-center py-12">
+              No products match your search.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* ALL GAMES */}
       <section className="container mx-auto px-4 py-8">
         <div className="flex items-end justify-between mb-6">
           <div>
@@ -139,7 +207,7 @@ export default function HomePage() {
                 <div className="p-3 flex-1 min-w-0">
                   <p className="font-semibold truncate">{g.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{g.publisher}</p>
-                  <span className="inline-block mt-2 text-[10px] uppercase tracking-wider rounded-full bg-secondary/60 px-2 py-0.5">
+                  <span className="inline-block mt-2 text-[10px] uppercase tracking-wider rounded-full bg-[var(--neon)]/10 border border-[var(--neon)]/30 px-2 py-0.5 text-[var(--neon)]">
                     {g.category}
                   </span>
                 </div>

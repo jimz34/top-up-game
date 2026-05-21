@@ -65,10 +65,10 @@ export function AdminLayout() {
   if (!user || !isAdmin) return null;
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+    `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
       isActive
-        ? "bg-secondary text-foreground font-medium"
-        : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+        ? "bg-[var(--neon)]/15 text-[var(--neon)] border border-[var(--neon)]/30"
+        : "text-foreground/80 hover:text-foreground hover:bg-secondary/60 border border-transparent"
     }`;
 
   const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => (

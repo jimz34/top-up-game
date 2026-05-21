@@ -13,6 +13,16 @@ export async function listGames(opts?: { popularOnly?: boolean }) {
   return data ?? [];
 }
 
+export async function listActiveProducts() {
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, name, price, image_url, description, product_type, price_per_unit, min_quantity, games(id, slug, name, category, image_url)")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
 export async function getGameWithProducts(slug: string) {
   const { data: game, error: ge } = await supabase
     .from("games")

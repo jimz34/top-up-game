@@ -332,7 +332,7 @@ export default function AdminPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Products</h1>
-        <Button onClick={openAddProduct} className="gap-2 bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring">
+        <Button onClick={openAddProduct} className="gap-2 bg-[var(--neon)] text-[oklch(0.08_0.04_258)] hover:bg-[var(--neon)]/90 font-semibold neon-ring">
           <Plus className="h-4 w-4" /> Add Product
         </Button>
       </div>
@@ -706,7 +706,7 @@ export default function AdminPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProductDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveProduct} disabled={saving} className="bg-[var(--gradient-primary)] text-primary-foreground">
+            <Button onClick={handleSaveProduct} disabled={saving} className="bg-[var(--neon)] text-[oklch(0.08_0.04_258)] hover:bg-[var(--neon)]/90 font-semibold">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingProductId ? "Save Changes" : "Create Product"}
             </Button>
           </DialogFooter>

@@ -54,8 +54,8 @@
   --popover: oklch(0.19 0.04 258);
   --popover-foreground: oklch(0.97 0.01 240);
 
-  --primary: oklch(0.74 0.18 235);
-  --primary-foreground: oklch(0.12 0.04 258);
+  --primary: oklch(0.78 0.2 225);
+  --primary-foreground: oklch(0.08 0.04 258);
 
   --secondary: oklch(0.26 0.05 258);
   --secondary-foreground: oklch(0.97 0.01 240);
@@ -75,12 +75,12 @@
   --warning: oklch(0.8 0.17 80);
   --warning-foreground: oklch(0.18 0.04 80);
 
-  --border: oklch(0.4 0.08 245 / 0.25);
+  --border: oklch(0.45 0.1 245 / 0.3);
   --input: oklch(0.25 0.05 258);
   --ring: oklch(0.74 0.18 235);
 
-  --neon: oklch(0.78 0.2 220);
-  --neon-soft: oklch(0.55 0.18 240);
+  --neon: oklch(0.82 0.22 215);
+  --neon-soft: oklch(0.6 0.2 235);
 
   --gradient-primary: linear-gradient(135deg, oklch(0.74 0.18 235), oklch(0.6 0.22 295));
   --gradient-hero: radial-gradient(1200px 600px at 80% 0%, oklch(0.4 0.18 260 / 0.45), transparent 60%),
@@ -114,13 +114,13 @@
     background: linear-gradient(180deg, oklch(0.24 0.05 258 / 0.55), oklch(0.18 0.04 258 / 0.55));
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    border: 1px solid oklch(0.55 0.1 240 / 0.18);
+    border: 1px solid oklch(0.55 0.1 240 / 0.25);
   }
   .glass-strong {
     background: linear-gradient(180deg, oklch(0.26 0.06 258 / 0.85), oklch(0.18 0.04 258 / 0.85));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid oklch(0.55 0.1 240 / 0.22);
+    border: 1px solid oklch(0.55 0.1 240 / 0.3);
   }
   .neon-text {
     background: var(--gradient-primary);

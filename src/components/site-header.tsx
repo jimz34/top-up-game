@@ -134,7 +134,7 @@ export function SiteHeader() {
           ) : (
             <>
               <Link to="/login">
-                <Button variant="ghost" size="sm">Sign in</Button>
+                <Button variant="outline" size="sm">Sign in</Button>
               </Link>
               <Link to="/register">
                 <Button size="sm" className="bg-[var(--gradient-primary)] text-primary-foreground hover:opacity-90 neon-ring">
