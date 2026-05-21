@@ -27,12 +27,14 @@ export default function HomePage() {
   );
   const popular = filtered.filter((g) => g.is_popular).slice(0, 6);
 
-  const filteredProducts = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(q.toLowerCase()) ||
-      ((p.games as any)?.name ?? "").toLowerCase().includes(q.toLowerCase()) ||
-      ((p.games as any)?.category ?? "").toLowerCase().includes(q.toLowerCase())
-  );
+  const filteredProducts = q
+    ? products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q.toLowerCase()) ||
+          ((p.games as any)?.name ?? "").toLowerCase().includes(q.toLowerCase()) ||
+          ((p.games as any)?.category ?? "").toLowerCase().includes(q.toLowerCase())
+      )
+    : products;
 
   return (
     <div>

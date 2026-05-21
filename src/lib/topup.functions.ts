@@ -14,13 +14,31 @@ export async function listGames(opts?: { popularOnly?: boolean }) {
 }
 
 export async function listActiveProducts() {
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, name, price, image_url, description, product_type, price_per_unit, min_quantity, games(id, slug, name, category, image_url)")
-    .eq("is_active", true)
-    .order("sort_order");
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  // Fetch products and games separately then merge client-side to avoid
+  // PostgREST join issues that silently return null for the games field.
+  const [productsRes, gamesRes] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, game_id, name, price, image_url, description, product_type, price_per_unit, min_quantity, sort_order")
+      .eq("is_active", true)
+      .order("sort_order"),
+    supabase
+      .from("games")
+      .select("id, slug, name, category, image_url")
+      .eq("is_active", true),
+  ]);
+
+  if (productsRes.error) throw new Error(productsRes.error.message);
+  if (gamesRes.error) throw new Error(gamesRes.error.message);
+
+  const gameMap = new Map((gamesRes.data ?? []).map((g) => [g.id, g]));
+  const products = (productsRes.data ?? []).map((p) => ({
+    ...p,
+    games: gameMap.get(p.game_id) ?? null,
+  }));
+
+  console.log("[listActiveProducts] fetched:", products.length, "products,", (gamesRes.data ?? []).length, "games");
+  return products;
 }
 
 export async function getGameWithProducts(slug: string) {
@@ -39,6 +57,7 @@ export async function getGameWithProducts(slug: string) {
     .eq("is_active", true)
     .order("sort_order");
   if (pe) throw new Error(pe.message);
+  console.log("[getGameWithProducts] game:", game.name, "products:", (products ?? []).length);
   return { game, products: products ?? [] };
 }
 
@@ -165,12 +184,26 @@ export async function adminListGames() {
 }
 
 export async function adminListProducts() {
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, name, description, image_url, price, cost, is_active, sort_order, game_id, product_type, min_quantity, price_per_unit, games(id, name, category)")
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  const [productsRes, gamesRes] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, name, description, image_url, price, cost, is_active, sort_order, game_id, product_type, min_quantity, price_per_unit")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("games")
+      .select("id, slug, name, category"),
+  ]);
+  if (productsRes.error) throw new Error(productsRes.error.message);
+  if (gamesRes.error) throw new Error(gamesRes.error.message);
+
+  const gameMap = new Map((gamesRes.data ?? []).map((g) => [g.id, g]));
+  const products = (productsRes.data ?? []).map((p) => ({
+    ...p,
+    games: gameMap.get(p.game_id) ?? null,
+  }));
+
+  console.log("[adminListProducts] fetched:", products.length, "products");
+  return products;
 }
 
 export async function adminListUsers() {
