@@ -1,16 +1,25 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export async function listGames(opts?: { popularOnly?: boolean }) {
-  let q = supabase
-    .from("games")
-    .select("id, slug, name, publisher, category, image_url, is_popular, requires_server_id, user_id_label")
-    .eq("is_active", true)
-    .order("is_popular", { ascending: false })
-    .order("name");
-  if (opts?.popularOnly) q = q.eq("is_popular", true);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  try {
+    let q = supabase
+      .from("games")
+      .select("id, slug, name, publisher, category, image_url, is_popular, requires_server_id, user_id_label")
+      .eq("is_active", true)
+      .order("is_popular", { ascending: false })
+      .order("name");
+    if (opts?.popularOnly) q = q.eq("is_popular", true);
+    const { data, error } = await q;
+    if (error) {
+      console.error("[listGames] error:", error.message);
+      return [];
+    }
+    console.log("[listGames] fetched:", (data ?? []).length, "games");
+    return data ?? [];
+  } catch (err) {
+    console.error("[listGames] UNHANDLED:", err);
+    return [];
+  }
 }
 
 export async function listActiveProducts() {
@@ -201,35 +210,85 @@ export async function adminUpdateTransactionStatus(id: string, status: string) {
 }
 
 export async function adminListGames() {
-  const { data, error } = await supabase
-    .from("games")
-    .select("*")
-    .order("name");
-  if (error) throw new Error(error.message);
-  return data ?? [];
+  console.log("[adminListGames] START");
+
+  try {
+    // Primary: try admin query (all games)
+    const { data, error } = await supabase
+      .from("games")
+      .select("*")
+      .order("name");
+
+    console.log("[adminListGames] primary:", data?.length ?? 0, "rows, error:", error?.message ?? "none");
+
+    if (!error && data && data.length > 0) {
+      return data;
+    }
+
+    if (error) {
+      console.warn("[adminListGames] primary failed, trying fallback:", error.message);
+    } else if (data?.length === 0) {
+      console.warn("[adminListGames] primary returned 0 rows, trying fallback");
+    }
+
+    // Fallback: public query (active games only) - works for any auth state
+    const fallback = await supabase
+      .from("games")
+      .select("id, slug, name, publisher, category, image_url, is_popular, is_active, requires_server_id, user_id_label")
+      .eq("is_active", true)
+      .order("name");
+
+    console.log("[adminListGames] fallback:", fallback.data?.length ?? 0, "rows, error:", fallback.error?.message ?? "none");
+
+    if (fallback.error) {
+      console.error("[adminListGames] fallback also failed:", fallback.error);
+      return [];
+    }
+
+    return fallback.data ?? [];
+  } catch (err) {
+    console.error("[adminListGames] UNHANDLED:", err);
+    return [];
+  }
 }
 
 export async function adminListProducts() {
-  const [productsRes, gamesRes] = await Promise.all([
-    supabase
-      .from("products")
-      .select("id, name, description, image_url, price, cost, is_active, sort_order, game_id, product_type, min_quantity, price_per_unit")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("games")
-      .select("id, slug, name, category"),
-  ]);
-  if (productsRes.error) throw new Error(productsRes.error.message);
-  if (gamesRes.error) throw new Error(gamesRes.error.message);
+  console.log("[adminListProducts] START");
+  try {
+    const [productsRes, gamesRes] = await Promise.all([
+      supabase
+        .from("products")
+        .select("id, name, description, image_url, price, cost, is_active, sort_order, game_id, product_type, min_quantity, price_per_unit")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("games")
+        .select("id, slug, name, category"),
+    ]);
 
-  const gameMap = new Map((gamesRes.data ?? []).map((g) => [g.id, g]));
-  const products = (productsRes.data ?? []).map((p) => ({
-    ...p,
-    games: gameMap.get(p.game_id) ?? null,
-  }));
+    console.log("[adminListProducts] products:", productsRes.data?.length ?? 0, "| error:", productsRes.error?.message ?? "none");
+    console.log("[adminListProducts] games:", gamesRes.data?.length ?? 0, "| error:", gamesRes.error?.message ?? "none");
 
-  console.log("[adminListProducts] fetched:", products.length, "products");
-  return products;
+    if (productsRes.error) {
+      console.error("[adminListProducts] products error:", productsRes.error);
+      return [];
+    }
+
+    // If games fail, still return products without game info
+    const gameMap = gamesRes.error
+      ? new Map()
+      : new Map((gamesRes.data ?? []).map((g) => [g.id, g]));
+
+    const products = (productsRes.data ?? []).map((p) => ({
+      ...p,
+      games: gameMap.get(p.game_id) ?? null,
+    }));
+
+    console.log("[adminListProducts] merged:", products.length, "products");
+    return products;
+  } catch (err) {
+    console.error("[adminListProducts] UNHANDLED:", err);
+    return [];
+  }
 }
 
 export async function adminListUsers() {

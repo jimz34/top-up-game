@@ -136,15 +136,19 @@ export default function AdminPage() {
     queryFn: () => adminListUsers(),
   });
 
-  const { data: games = [], isLoading: gamesLoading } = useQuery({
+  const { data: games = [], isLoading: gamesLoading, error: gamesError, refetch: refetchGames } = useQuery({
     queryKey: ["admin-games"],
     queryFn: () => adminListGames(),
   });
+
+  console.log("[AdminPage] games:", games.length, "| loading:", gamesLoading, "| error:", gamesError?.message ?? "none");
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ["admin-products"],
     queryFn: () => adminListProducts(),
   });
+
+  console.log("[AdminPage] products:", products.length, "| loading:", productsLoading);
 
   const handleStatusChange = async (txId: string, newStatus: string) => {
     try {
@@ -336,6 +340,16 @@ export default function AdminPage() {
           <Plus className="h-4 w-4" /> Add Product
         </Button>
       </div>
+      {gamesError && (
+        <div className="glass rounded-xl p-4 mb-4 border border-yellow-500/30 text-yellow-300 text-sm">
+          Failed to load games: {gamesError.message}. <button onClick={() => refetchGames()} className="underline">Retry</button>
+        </div>
+      )}
+      {!gamesLoading && games.length === 0 && (
+        <div className="glass rounded-xl p-4 mb-4 border border-red-500/30 text-red-300 text-sm">
+          No games available. Products require at least one game. <button onClick={() => refetchGames()} className="underline">Refresh</button>
+        </div>
+      )}
       {productsLoading ? (
         <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : (
@@ -562,11 +576,14 @@ export default function AdminPage() {
                 onValueChange={(val) => setProductForm((f) => ({ ...f, game_id: val }))}
               >
                 <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select a game" />
+                  <SelectValue placeholder={gamesLoading ? "Loading games..." : games.length === 0 ? "No games available" : "Select a game"} />
                 </SelectTrigger>
                 <SelectContent>
+                  {(games as any[]).length === 0 && !gamesLoading && (
+                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">No games found. Check your connection.</div>
+                  )}
                   {(games as any[]).map((g: any) => (
-                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    <SelectItem key={g.id} value={g.id}>{g.name} <span className="text-muted-foreground text-xs">({g.category ?? ""})</span></SelectItem>
                   ))}
                 </SelectContent>
               </Select>
